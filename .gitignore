@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+
+# 临时/测试导出
+*.tmp
+filmscan.jpg
+filmscan.png

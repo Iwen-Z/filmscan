@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灯箱白边 · FilmScan Border</title>
+<style>
+  :root { --bg:#f4f4f5; --card:#fff; --line:#e4e4e7; --txt:#18181b; --sub:#71717a; --accent:#18181b; }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body { font:15px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+         background:var(--bg); color:var(--txt); -webkit-font-smoothing:antialiased; }
+  header { text-align:center; padding:28px 16px 8px; }
+  header h1 { font-size:20px; letter-spacing:.5px; }
+  header p { color:var(--sub); font-size:13px; margin-top:4px; }
+  .wrap { max-width:880px; margin:0 auto; padding:16px; display:grid; gap:16px; }
+  @media(min-width:760px){ .wrap{ grid-template-columns:300px 1fr; align-items:start; } header{padding-top:36px;} }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .panel { position:sticky; top:16px; }
+  label.ctrl { display:block; margin:14px 0 6px; font-size:13px; color:var(--sub); }
+  label.ctrl b { color:var(--txt); font-weight:600; float:right; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  .row { display:flex; gap:10px; align-items:center; }
+  .swatches { display:flex; gap:8px; margin-top:6px; }
+  .swatch { width:26px; height:26px; border-radius:50%; border:1px solid var(--line); cursor:pointer; }
+  .swatch.on { outline:2px solid var(--accent); outline-offset:2px; }
+  .drop { border:2px dashed var(--line); border-radius:12px; padding:30px 16px; text-align:center;
+          color:var(--sub); cursor:pointer; transition:.15s; }
+  .drop.hover { border-color:var(--accent); background:#fafafa; color:var(--txt); }
+  .drop b { color:var(--txt); }
+  button { font:inherit; cursor:pointer; border:none; border-radius:10px; padding:11px 16px;
+           background:var(--accent); color:#fff; font-weight:600; width:100%; margin-top:18px; }
+  button.ghost { background:#fff; color:var(--txt); border:1px solid var(--line); margin-top:8px; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .stage { background:
+      repeating-conic-gradient(#ececec 0% 25%, #f7f7f7 0% 50%) 50%/22px 22px;
+      border:1px solid var(--line); border-radius:14px; min-height:320px;
+      display:flex; align-items:center; justify-content:center; padding:18px; overflow:hidden; }
+  canvas { max-width:100%; max-height:72vh; box-shadow:0 8px 30px rgba(0,0,0,.12); display:none; }
+  .hint { color:var(--sub); font-size:13px; text-align:center; }
+  .seg { display:flex; gap:6px; margin-top:6px; }
+  .seg button { margin:0; flex:1; background:#fff; color:var(--sub); border:1px solid var(--line); padding:7px; font-weight:500;}
+  .seg button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>灯箱白边 · FilmScan Border</h1>
+  <p>把照片浮在发光的白底上 — 上传、调节、下载,全免费</p>
+</header>
+
+<div class="wrap">
+  <div class="card panel">
+    <div id="drop" class="drop">
+      点击或拖入照片<br><b>JPG / PNG</b>
+      <input id="file" type="file" accept="image/*" hidden>
+    </div>
+
+    <label class="ctrl">白边粗细 <b id="vBorder">6%</b></label>
+    <input id="border" type="range" min="0" max="25" value="6">
+
+    <label class="ctrl">边缘透光感 <b id="vGlow">35</b></label>
+    <input id="glow" type="range" min="0" max="100" value="35">
+
+    <label class="ctrl">圆角 <b id="vRadius">0</b></label>
+    <input id="radius" type="range" min="0" max="60" value="0">
+
+    <label class="ctrl">底色</label>
+    <div class="swatches" id="swatches">
+      <div class="swatch on" data-c="#ffffff" style="background:#fff"></div>
+      <div class="swatch" data-c="#fafaf7" style="background:#fafaf7"></div>
+      <div class="swatch" data-c="#f3f1ea" style="background:#f3f1ea"></div>
+      <div class="swatch" data-c="#000000" style="background:#000"></div>
+    </div>
+
+    <label class="ctrl">导出格式</label>
+    <div class="seg" id="fmt">
+      <button class="on" data-f="jpg">JPG</button>
+      <button data-f="png">PNG</button>
+    </div>
+
+    <button id="save" disabled>下载图片</button>
+    <button id="reset" class="ghost" disabled>换一张</button>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div id="empty" class="hint">先上传一张照片 →</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let img = null, bg = '#ffffff', fmt = 'jpg';
+
+const ui = { border:$('#border'), glow:$('#glow'), radius:$('#radius') };
+const out = { border:$('#vBorder'), glow:$('#vGlow'), radius:$('#vRadius') };
+
+function loadFile(f){
+  if(!f || !f.type.startsWith('image/')) return;
+  const im = new Image();
+  im.onload = () => { img = im; $('#empty').style.display='none'; cv.style.display='block';
+                      $('#save').disabled=false; $('#reset').disabled=false; render(); };
+  im.src = URL.createObjectURL(f);
+}
+
+// 圆角矩形路径
+function rr(x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function render(){
+  if(!img) return;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const minSide = Math.min(iw, ih);
+  const b = Math.round(minSide * (+ui.border.value)/100);
+  const rad = Math.round(minSide * (+ui.radius.value)/100/2); // 0~30% 半径
+  const W = iw + b*2, H = ih + b*2;
+  cv.width = W; cv.height = H;
+
+  // 底
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  // 图(可圆角裁切)
+  ctx.save();
+  if(rad>0){ rr(b,b,iw,ih,rad); ctx.clip(); }
+  ctx.drawImage(img, b, b, iw, ih);
+
+  // 边缘透光:四边白色内发光,模拟灯箱溢光
+  const gv = +ui.glow.value;
+  if(gv>0){
+    const alpha = (gv/100)*0.85;
+    const gw = Math.round(minSide * 0.10);           // 发光宽度 ~10%
+    const sides = [
+      [b,b,iw,gw, 0,b,0,b+gw],                       // 上
+      [b,b+ih-gw,iw,gw, 0,b+ih,0,b+ih-gw],           // 下
+      [b,b,gw,ih, b,0,b+gw,0],                       // 左
+      [b+iw-gw,b,gw,ih, b+iw,0,b+iw-gw,0],           // 右
+    ];
+    for(const [x,y,w,h,x0,y0,x1,y1] of sides){
+      const g = ctx.createLinearGradient(x0,y0,x1,y1);
+      g.addColorStop(0, 'rgba(255,255,255,'+alpha+')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x,y,w,h);
+    }
+  }
+  ctx.restore();
+}
+
+function save(){
+  if(!img) return;
+  const type = fmt==='png' ? 'image/png' : 'image/jpeg';
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'filmscan.' + fmt;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, type, 0.95);
+}
+
+// 事件
+const drop = $('#drop'), file = $('#file');
+drop.onclick = () => file.click();
+file.onchange = e => loadFile(e.target.files[0]);
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hover');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hover');}));
+drop.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+
+for(const k in ui) ui[k].oninput = () => {
+  out.border.textContent = ui.border.value + '%';
+  out.glow.textContent = ui.glow.value;
+  out.radius.textContent = ui.radius.value;
+  render();
+};
+
+$('#swatches').onclick = e => {
+  if(!e.target.dataset.c) return;
+  bg = e.target.dataset.c;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('on'));
+  e.target.classList.add('on'); render();
+};
+$('#fmt').onclick = e => {
+  if(!e.target.dataset.f) return;
+  fmt = e.target.dataset.f;
+  document.querySelectorAll('#fmt button').forEach(b=>b.classList.remove('on'));
+  e.target.classList.add('on');
+};
+$('#save').onclick = save;
+$('#reset').onclick = () => file.click();
+</script>
+</body>
+</html>
