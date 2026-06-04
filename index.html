@@ -423,7 +423,7 @@ function pieceLayout(piece){
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
   if(!shots || !shots.length) return null;
   const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
-  const fh = TH * (0.32 + ratio*0.40);   // 帧高随规格变,留出多帧空间
+  const fh = TH * (0.22 + ratio*0.34);   // 帧高随规格变;整体调小让胶片在台面上有更多留白
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基
   const m  = fh * 0.16;                  // 上下片基/齿孔区
@@ -502,19 +502,11 @@ function renderPiece(piece){
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
     if(glow>0){
-      // 背光透过底片:整帧轻微提亮、更通透(调透光度直接看得到变化)
+      // 背光透过底片:整帧均匀提亮、更通透(调透光度直接看得到变化)。
+      // 真实灯箱透光是整片被背光照亮,画幅内不该出现一圈白边 -> 只做均匀提亮,不再描内边框。
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = 'rgba(255,249,238,'+(t*0.22)+')';
       ctx.fillRect(fx, framesY, fw, fh);
-      // 画幅内边缘:细、暖、虚的透光,不是硬白框
-      ctx.globalCompositeOperation = 'source-over';
-      const lw = Math.max(1, Math.round(Math.min(fw,fh)*0.012));
-      ctx.shadowColor = 'rgba(255,250,240,'+(0.3+t*0.5)+')';
-      ctx.shadowBlur  = Math.round(Math.min(fw,fh)*0.07);
-      ctx.lineWidth   = lw;
-      ctx.strokeStyle = 'rgba(255,250,240,'+(t*0.26)+')';
-      rr(ctx, fx+lw, framesY+lw, fw-2*lw, fh-2*lw, Math.max(0,rad-lw));
-      ctx.stroke();
     }
     ctx.restore();
   });
