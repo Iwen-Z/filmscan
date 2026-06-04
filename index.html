@@ -289,6 +289,9 @@
     <label class="ctrl">台框预设</label>
     <div class="seg" id="presetSeg"></div>
 
+    <label class="ctrl">背光亮度 <b id="vBacklight">65</b></label>
+    <input id="backlight" type="range" min="0" max="100" value="65">
+
     <label class="ctrl">均匀度(中心热点)<b id="vUnif">0</b></label>
     <input id="unif" type="range" min="0" max="100" value="0">
 
@@ -312,9 +315,6 @@
 
     <label class="ctrl">画幅规格</label>
     <div class="seg" id="filmSeg"></div>
-
-    <label class="ctrl">透光感 <b id="vGlow">40</b></label>
-    <input id="glow" type="range" min="0" max="100" value="40">
 
     <label class="ctrl">底片圆角 <b id="vRadius">0</b></label>
     <input id="radius" type="range" min="0" max="60" value="0">
@@ -365,10 +365,14 @@ const films = [
 let filmIdx = 1;          // 默认 135
 
 // —— 胶片本身的属性(独立于观片台,换台子不变) ——
-//   glow   = 胶片透过背光后边缘的溢光强度(透光是底片的特性,不是台子的)
 //   radius = 底片画幅圆角,真实底片基本是直角 -> 默认 0
-let glow = 40;
 let radius = 0;
+
+// —— 观片台属性:背光亮度 ——
+//   backlight = 观片台/灯箱背光透过胶片后的整体提亮强度(是台子的属性,不是胶片的)。
+//   胶片本身是恒定半透明介质,透光量由密度固定;能调的只有台子背光多亮。
+//   背光越亮:逐帧越亮、片基边缘越透、整条片基越亮越通透。默认调到肉眼明显档。
+let backlight = 65;
 
 // —— 观片台预设(发光台面本身:底色/均匀度/像素网格/机身) ——
 const presets = [
@@ -383,8 +387,8 @@ let p = {...presets[0]};
 const TW = 2000, TH = 1500;
 bg.width = TW; bg.height = TH;
 
-const ui  = { glow:$('#glow'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
-const out = { glow:$('#vGlow'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
+const ui  = { backlight:$('#backlight'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
+const out = { backlight:$('#vBacklight'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
 
 function rr(c,x,y,w,h,r){
   r = Math.max(0, Math.min(r, w/2, h/2));
@@ -429,7 +433,7 @@ function renderBg(){
 // 边框样式:旧 piece 无该字段时按 film 处理(向后兼容)
 function pieceFrameStyle(piece){ return (piece && piece.frameStyle) || 'film'; }
 
-// cover 裁切单帧画到 (fx,fy,fw,fh);lightbox=true 时叠加随 glow 的均匀背光提亮
+// cover 裁切单帧画到 (fx,fy,fw,fh);lightbox=true 时叠加随背光亮度的均匀背光提亮
 function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
   if(!img || !img.complete || !img.naturalWidth) return;
   const iw = img.naturalWidth, ih = img.naturalHeight, ia = iw/ih;
@@ -439,16 +443,16 @@ function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
   ctx.save();
   rr(ctx, fx, fy, fw, fh, rad); ctx.clip();
   ctx.drawImage(img, sx,sy,sw,sh, fx, fy, fw, fh);
-  if(lightbox && glow>0){
+  if(lightbox && backlight>0){
     ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,249,238,'+((glow/100)*0.22)+')';
+    ctx.fillStyle = 'rgba(255,249,238,'+((backlight/100)*0.22)+')';
     ctx.fillRect(fx, fy, fw, fh);
   }
   ctx.restore();
 }
 
 // —— 胶卷条几何:把某个 piece 所属卷的若干帧横排在该 piece 的局部画布上 ——
-//   坐标全部在该 piece 的 canvas 局部坐标系,band 整体偏移 PAD(给 glow 留边)
+//   坐标全部在该 piece 的 canvas 局部坐标系,band 整体偏移 PAD(给背光透光柔边留边)
 function pieceLayout(piece){
   const roll = rollById(piece.rollId);
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
@@ -463,7 +467,7 @@ function pieceLayout(piece){
   const CW = N*fw + (N-1)*g;              // 所有帧内容宽
   const pad = TW * 0.06;                  // 胶卷两端片头
   const stripW = CW + 2*pad;             // 整条内容宽(无窗口截断,长卷比台面宽 -> 伸到框外)
-  // 四周留白:必须 >= 外侧 glow 的 shadowBlur(fh*0.16),否则溢光被 canvas 边裁切
+  // 四周留白:必须 >= 外侧背光柔边的 shadowBlur(fh*0.16),否则溢光被 canvas 边裁切
   const PAD = Math.ceil(fh*0.22);
   const originX = pad + PAD;              // 首帧在 canvas 局部坐标中的起点
   const bandTop = PAD;                    // band 垂直起点(canvas 高 = BH+2*PAD)
@@ -538,15 +542,15 @@ function renderPieceFilm(piece){
   const rad = Math.round(Math.min(fw,fh) * radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
 
-  const t = glow/100;
+  const t = backlight/100;                    // 背光亮度归一
 
-  // 1) 片基(半透明暗棕胶卷带)+ 齿孔真镂空
-  //    关键:片基不是不透明实色,而是半透明 -> 底下发光台面透上来,整片被背光照亮才有「透」感。
-  //    透光度越高,片基越透(alpha 越低),背光透得越多。
+  // 1) 片基(恒定半透明暗棕胶卷带)+ 齿孔真镂空
+  //    片基是恒定半透明介质:alpha 固定为一个明显半透明的常量,底下发光台面始终透上来、边框始终通透。
+  //    片基透不透是胶片的物理属性、不随调节变;能调的是台子背光多亮(下面随 backlight 把整条照亮、提透)。
+  const BASE_A = 0.6;                          // 恒定半透明:台面透 40% 上来,边框肉眼半透明
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
-  const baseA = 0.9 - t*0.5;                  // glow0→0.9 几乎不透;glow40→0.7;glow100→0.4 很通透
-  ctx.fillStyle = 'rgba(38,31,23,'+baseA+')';
+  ctx.fillStyle = 'rgba(38,31,23,'+BASE_A+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
   // destination-out:把齿孔位置的片基像素清成全透明(比片基更亮的镂空)
   ctx.globalCompositeOperation = 'destination-out';
@@ -556,8 +560,8 @@ function renderPieceFilm(piece){
     rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
     rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
   }
-  // 片基长边:再抠一道淡淡的渐隐透光(胶片边缘最薄、透光最强)
-  if(glow>0){
+  // 片基长边:背光从最薄的边缘透得最强 -> 随背光亮度抠一道渐隐透光(背光越亮边缘越透)
+  if(backlight>0){
     ctx.fillStyle = '#000';
     const edge = m*0.5;
     let gTop = ctx.createLinearGradient(0,bandTop,0,bandTop+edge);
@@ -567,9 +571,15 @@ function renderPieceFilm(piece){
     gBot.addColorStop(0,'rgba(0,0,0,0)'); gBot.addColorStop(1,'rgba(0,0,0,'+(t*0.55)+')');
     ctx.fillStyle = gBot; ctx.fillRect(bandX,bandTop+BH-edge,bandW,edge);
   }
+  // 背光透过片基:整条片基被背光照亮 -> 背光越亮整片越亮越通透(让 backlight 也作用到片基)
+  if(backlight>0){
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255,249,238,'+(t*0.30)+')';
+    ctx.fillRect(bandX, bandTop, bandW, BH);
+  }
   ctx.restore();
 
-  // 2) 逐帧:cover 裁成画幅 + 背光透过底片(随 glow 提亮、边缘柔光)
+  // 2) 逐帧:cover 裁成画幅 + 背光透过底片(随背光亮度提亮、边缘柔光)
   const far = L.aspect;
   shots.forEach((sh0,i)=>{
     const img = sh0.img;
@@ -583,8 +593,8 @@ function renderPieceFilm(piece){
     ctx.save();
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
-    if(glow>0){
-      // 背光透过底片:整帧均匀提亮、更通透(调透光度直接看得到变化)。
+    if(backlight>0){
+      // 背光透过底片:整帧均匀提亮、更通透(调背光亮度直接看得到变化)。
       // 真实灯箱透光是整片被背光照亮,画幅内不该出现一圈白边 -> 只做均匀提亮,不再描内边框。
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = 'rgba(255,249,238,'+(t*0.22)+')';
@@ -612,7 +622,7 @@ function render(){ renderBg(); renderAllPieces(); }   // 全局外观变化时
 function applyPreset(i){
   cur = i;
   p = {...presets[i]};
-  ui.unif.value = p.unif; ui.pixel.value = p.pixel;   // glow/radius 属胶片,不随换台子重置
+  ui.unif.value = p.unif; ui.pixel.value = p.pixel;   // backlight 是全局背光、radius 属胶片,均不随换台框预设重置
   syncLabels();
   document.querySelectorAll('.swatch').forEach(s=>
     s.classList.toggle('on', s.dataset.c.toLowerCase()===p.base.toLowerCase()));
@@ -1012,7 +1022,7 @@ function save(){
 }
 
 function syncLabels(){
-  out.glow.textContent   = ui.glow.value;
+  out.backlight.textContent = ui.backlight.value;
   out.unif.textContent   = ui.unif.value;
   out.pixel.textContent  = ui.pixel.value;
   out.radius.textContent = ui.radius.value;
@@ -1157,7 +1167,8 @@ window.addEventListener('resize', ()=>{ pieces.forEach(layoutPieceEl); positionC
 
 // 滑块
 for(const k in ui) ui[k].oninput = () => {
-  glow=+ui.glow.value; radius=+ui.radius.value;        // 胶片属性
+  radius=+ui.radius.value;                              // 胶片属性
+  backlight=+ui.backlight.value;                       // 观片台背光
   p.unif=+ui.unif.value; p.pixel=+ui.pixel.value;      // 观片台属性
   syncLabels(); render();
 };
