@@ -388,7 +388,7 @@ function pieceLayout(piece){
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
   if(!shots || !shots.length) return null;
   const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
-  const fh = TH * (0.22 + ratio*0.34);   // 帧高随规格变;整体调小让胶片在台面上有更多留白
+  const fh = TH * (0.067 + ratio*0.103);   // 帧高随规格变;整体缩小使 135 在 lightbox 高度内可竖排约 7 条(BH≈214,TH/7≈214),台面留白更多
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基
   const m  = fh * 0.16;                  // 上下片基/齿孔区
