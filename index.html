@@ -6,8 +6,11 @@
 <title>观片台 · FilmScan Lightbox</title>
 <style>
   :root{
-    --ink:#e9e9ec; --sub:#a7a7b0; --line:rgba(255,255,255,.14);
-    --panel:#1c1c22; --panel-line:rgba(255,255,255,.1); --accent:#f4f4f5;
+    --ink:#ece7dc; --sub:#9d978a; --line:rgba(255,255,255,.10);
+    --panel:#17161a; --panel-line:rgba(255,255,255,.07); --accent:#e8dcc0;
+    /* 灯箱暖白高亮,取代旧的 neon 蓝紫描边 */
+    --hl:#e3d4ad; --hl-rgb:227,212,173;
+    --hl-soft:rgba(227,212,173,.22);
     --tray:124px;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -15,9 +18,10 @@
   body{
     font:15px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
     color:var(--ink); -webkit-font-smoothing:antialiased; overflow:hidden;
+    /* 暗房台面:暖中性、中心微微透出台灯余光,去掉旧的蓝灰网页调 */
     background:
-      radial-gradient(120% 90% at 50% 38%, #34343c 0%, #232329 46%, #161619 100%),
-      #161619;
+      radial-gradient(135% 100% at 50% 40%, #2b2824 0%, #1d1b19 48%, #121110 100%),
+      #121110;
   }
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; opacity:.05; z-index:0;
@@ -42,10 +46,11 @@
   .body{ position:relative; border-radius:20px;
          transition:padding .3s ease, border-radius .3s ease, background .3s ease, box-shadow .3s ease; }
   /* 发光台面:固定 4:3,canvas(整块台面)铺满 */
-  .screen{ position:relative; border-radius:8px; overflow:hidden;
+  .screen{ position:relative; border-radius:6px; overflow:hidden;
            width:100%; aspect-ratio:4/3; background:rgba(255,255,255,.05);
            display:flex; align-items:center; justify-content:center; }
-  .screen.drag-on{ outline:3px dashed rgba(120,150,255,.85); outline-offset:-8px; }
+  /* 拖入文件:台面整体提亮+暖白内圈,而不是 neon 虚线框 */
+  .screen.drag-on{ box-shadow:inset 0 0 0 2px var(--hl-soft), inset 0 0 70px 12px rgba(var(--hl-rgb),.28); }
 
   .body.pro{ background:linear-gradient(#d9d9dc,#bdbdc2); padding:5.5%;
              box-shadow:0 26px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.7); }
@@ -79,10 +84,10 @@
 
   /* 阶段2:选中某帧后浮在该帧上方的「剪下」按钮 */
   .cut-btn{ position:fixed; z-index:10; transform:translate(-50%,-100%);
-            background:#7d96ff; color:#10131f; border:none; border-radius:8px;
-            padding:6px 12px; font:600 12px/1 inherit; cursor:pointer;
-            box-shadow:0 6px 18px rgba(0,0,0,.45); white-space:nowrap; }
-  .cut-btn:hover{ background:#9aacff; }
+            background:rgba(26,24,21,.92); color:var(--hl); border:1px solid rgba(var(--hl-rgb),.5);
+            border-radius:6px; padding:6px 12px; font:600 12px/1 inherit; cursor:pointer;
+            box-shadow:0 6px 18px rgba(0,0,0,.5); white-space:nowrap; backdrop-filter:blur(6px); }
+  .cut-btn:hover{ background:rgba(40,37,31,.95); color:#f3e8cc; }
 
   .placeholder{ position:absolute; inset:0; display:flex; flex-direction:column;
                 align-items:center; justify-content:center; gap:6px;
@@ -91,20 +96,21 @@
 
   /* 右侧:按「卷」分组的胶卷候选区 */
   .tray{ position:fixed; top:0; right:0; bottom:0; width:var(--tray); z-index:6;
-         background:rgba(20,20,24,.66); backdrop-filter:blur(10px);
-         border-left:1px solid var(--line); display:flex; flex-direction:column; padding:14px 0; }
+         background:linear-gradient(rgba(22,20,18,.82),rgba(16,15,13,.86)); backdrop-filter:blur(10px);
+         border-left:1px solid rgba(0,0,0,.5); box-shadow:inset 1px 0 0 rgba(255,255,255,.05);
+         display:flex; flex-direction:column; padding:14px 0; }
   .newroll{ flex:0 0 auto; margin:0 14px 12px; padding:12px 0; cursor:pointer;
-            border:1.5px dashed var(--line); border-radius:10px; text-align:center;
+            border:1px dashed var(--line); border-radius:6px; text-align:center;
             color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
-  .newroll:hover, .tray.drag-on .newroll{ border-color:#7d96ff; color:#cdd6ff; }
+  .newroll:hover, .tray.drag-on .newroll{ border-color:var(--hl); color:var(--hl); }
   .newroll b{ display:block; font-size:20px; font-weight:400; color:inherit; }
   .rolls{ flex:1 1 auto; overflow-y:auto; padding:0 10px 8px;
           display:flex; flex-direction:column; gap:12px; }
-  .roll{ border:1px solid var(--line); border-radius:10px; padding:8px; transition:.15s;
-         background:rgba(255,255,255,.02); cursor:grab; }
+  .roll{ border:1px solid var(--line); border-radius:6px; padding:8px; transition:.15s;
+         background:rgba(255,255,255,.02); box-shadow:inset 0 1px 0 rgba(255,255,255,.04); cursor:grab; }
   .roll:active{ cursor:grabbing; }
-  .roll.on{ border-color:rgba(125,150,255,.7); background:rgba(125,150,255,.08); }
-  .roll.drop-on{ border-color:#7d96ff; background:rgba(125,150,255,.14); }
+  .roll.on{ border-color:rgba(var(--hl-rgb),.6); background:rgba(var(--hl-rgb),.07); }
+  .roll.drop-on{ border-color:var(--hl); background:rgba(var(--hl-rgb),.13); }
   .roll-h{ display:flex; align-items:center; gap:6px; cursor:grab; margin-bottom:8px;
            padding:2px 2px 6px; border-bottom:1px solid var(--line); touch-action:none; }
   .roll-h:active{ cursor:grabbing; }
@@ -116,7 +122,7 @@
              cursor:pointer; padding:0 2px; opacity:.5; }
   .roll-del:hover{ opacity:1; color:#ff8a8a; }
   .roll-thumbs{ display:flex; flex-direction:column; gap:8px; }
-  .thumb{ position:relative; border-radius:7px; overflow:hidden; cursor:grab;
+  .thumb{ position:relative; border-radius:4px; overflow:hidden; cursor:grab;
           border:2px solid transparent; aspect-ratio:1; background:#000; transition:border-color .15s; }
   .thumb:active{ cursor:grabbing; }
   .thumb img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
@@ -124,17 +130,17 @@
                background:rgba(0,0,0,.6); color:#fff; border:none; font-size:12px; line-height:18px;
                cursor:pointer; opacity:0; transition:.15s; padding:0; }
   .thumb:hover .del{ opacity:1; }
-  .roll-add{ aspect-ratio:3/1; border:1.5px dashed var(--line); border-radius:7px; cursor:pointer;
+  .roll-add{ aspect-ratio:3/1; border:1px dashed var(--line); border-radius:4px; cursor:pointer;
              display:flex; align-items:center; justify-content:center; color:var(--sub);
              font-size:16px; transition:.15s; }
-  .roll-add:hover{ border-color:#7d96ff; color:#cdd6ff; }
+  .roll-add:hover{ border-color:var(--hl); color:var(--hl); }
   .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
 
   .arrow{ position:fixed; top:50%; transform:translateY(-50%); z-index:6;
           width:44px; height:44px; border-radius:50%; border:1px solid var(--line);
-          background:rgba(28,28,34,.6); color:#fff; font-size:20px; cursor:pointer;
+          background:rgba(26,24,21,.6); color:var(--ink); font-size:20px; cursor:pointer;
           backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; transition:.15s; }
-  .arrow:hover{ background:rgba(50,50,60,.85); }
+  .arrow:hover{ background:rgba(44,40,33,.85); }
   .arrow.prev{ left:14px; }
   .arrow.next{ right:calc(var(--tray) + 14px); }
 
@@ -142,11 +148,11 @@
   .dock{ position:fixed; bottom:16px; left:0; right:var(--tray); z-index:6;
          display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none; }
   .films{ display:flex; gap:7px; pointer-events:auto; }
-  .film{ padding:5px 12px; border-radius:14px; font-size:12px; cursor:pointer; line-height:1.2;
-         border:1px solid var(--line); background:rgba(28,28,34,.55); color:var(--sub);
+  .film{ padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; line-height:1.2;
+         border:1px solid var(--line); background:rgba(26,24,21,.6); color:var(--sub);
          backdrop-filter:blur(8px); transition:.15s; }
-  .film:hover{ color:#fff; }
-  .film.on{ background:#fff; color:#18181b; border-color:#fff; }
+  .film:hover{ color:var(--ink); border-color:rgba(var(--hl-rgb),.4); }
+  .film.on{ background:var(--accent); color:#211d16; border-color:var(--accent); }
   .film small{ display:block; font-size:9px; opacity:.6; }
   .deckname{ font-size:13px; letter-spacing:2px; color:#fff; opacity:.8; }
   .dots{ display:flex; gap:9px; pointer-events:auto; }
@@ -154,35 +160,42 @@
   .dot.on{ background:#fff; transform:scale(1.25); }
 
   .gear{ position:fixed; top:16px; left:16px; z-index:7; width:42px; height:42px;
-         border-radius:50%; border:1px solid var(--line); background:rgba(28,28,34,.6);
-         color:#fff; font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
-  .gear:hover{ background:rgba(50,50,60,.85); }
+         border-radius:50%; border:1px solid var(--line); background:rgba(26,24,21,.6);
+         color:var(--ink); font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
+  .gear:hover{ background:rgba(44,40,33,.85); }
   .drawer{ position:fixed; top:0; left:0; bottom:0; width:320px; max-width:88vw; z-index:9;
-           background:var(--panel); border-right:1px solid var(--panel-line);
+           background:linear-gradient(180deg,#1b1916,#141310);
+           border-right:1px solid rgba(0,0,0,.5); box-shadow:inset -1px 0 0 rgba(255,255,255,.05), 12px 0 40px rgba(0,0,0,.5);
            padding:22px 20px; overflow-y:auto; transform:translateX(-100%);
-           transition:transform .32s cubic-bezier(.4,0,.2,1); box-shadow:12px 0 40px rgba(0,0,0,.4); }
+           transition:transform .32s cubic-bezier(.4,0,.2,1); }
   .drawer.open{ transform:translateX(0); }
-  .drawer h2{ font-size:14px; font-weight:600; letter-spacing:1px; margin-bottom:4px; }
+  .drawer h2{ font-size:14px; font-weight:600; letter-spacing:2px; color:#fff; opacity:.9; }
   .drawer .close{ position:absolute; top:16px; right:16px; background:none; border:none;
                   color:var(--sub); font-size:22px; cursor:pointer; width:auto; padding:4px; }
   .scrim{ position:fixed; inset:0; z-index:8; background:rgba(0,0,0,.4); opacity:0;
           pointer-events:none; transition:opacity .3s; }
   .scrim.on{ opacity:1; pointer-events:auto; }
 
-  label.ctrl{ display:block; margin:16px 0 6px; font-size:13px; color:var(--sub); }
+  /* 设置分组:每组一块,带标题与分隔线 */
+  .group{ margin-top:22px; padding-top:18px; border-top:1px solid var(--panel-line); }
+  .group-h{ font-size:11px; font-weight:700; letter-spacing:2.5px; color:var(--hl); }
+  .group-sub{ color:var(--sub); font-size:11px; opacity:.7; margin-top:2px; }
+  label.ctrl{ display:block; margin:14px 0 6px; font-size:13px; color:var(--sub); }
   label.ctrl b{ color:var(--ink); font-weight:600; float:right; }
   input[type=range]{ width:100%; accent-color:var(--accent); }
   .swatches{ display:flex; gap:8px; margin-top:6px; }
   .swatch{ width:26px; height:26px; border-radius:50%; border:1px solid var(--line); cursor:pointer; }
-  .swatch.on{ outline:2px solid #fff; outline-offset:2px; }
-  .seg{ display:flex; gap:6px; margin-top:6px; }
-  .seg button,.btn{ font:inherit; cursor:pointer; border-radius:9px; }
-  .seg button{ flex:1; background:transparent; color:var(--sub); border:1px solid var(--line);
-               padding:8px; font-weight:500; }
-  .seg button.on{ background:#fff; color:#18181b; border-color:#fff; }
-  .btn{ width:100%; border:none; padding:12px; font-weight:600; margin-top:16px; background:#fff; color:#18181b; }
+  .swatch.on{ outline:2px solid var(--hl); outline-offset:2px; }
+  .seg{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .seg button,.btn{ font:inherit; cursor:pointer; border-radius:6px; }
+  .seg button{ flex:1 1 0; min-width:54px; background:transparent; color:var(--sub); border:1px solid var(--line);
+               padding:8px 6px; font-weight:500; line-height:1.2; transition:.15s; }
+  .seg button:hover{ color:var(--ink); border-color:rgba(var(--hl-rgb),.4); }
+  .seg button.on{ background:var(--accent); color:#211d16; border-color:var(--accent); }
+  .seg button small{ display:block; font-size:9px; opacity:.6; margin-top:1px; }
+  .btn{ width:100%; border:none; padding:12px; font-weight:600; margin-top:14px;
+        background:var(--accent); color:#211d16; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
-  hr{ border:none; border-top:1px solid var(--panel-line); margin:20px 0 4px; }
 
   @media(max-width:680px){
     :root{ --tray:0px; }
@@ -249,37 +262,57 @@
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer">
   <button class="close" id="closeDrawer">×</button>
-  <h2>微调</h2>
-  <p style="color:var(--sub);font-size:12px">在当前观片台基础上精修</p>
+  <h2>设置</h2>
 
-  <label class="ctrl">边缘透光感 <b id="vGlow">40</b></label>
-  <input id="glow" type="range" min="0" max="100" value="40">
+  <!-- 第一组:观片台(发光台面相关) -->
+  <section class="group">
+    <div class="group-h">观片台</div>
+    <div class="group-sub">发光台面与台框</div>
 
-  <label class="ctrl">均匀度(中心热点)<b id="vUnif">0</b></label>
-  <input id="unif" type="range" min="0" max="100" value="0">
+    <label class="ctrl">台框预设</label>
+    <div class="seg" id="presetSeg"></div>
 
-  <label class="ctrl">像素网格 <b id="vPixel">0</b></label>
-  <input id="pixel" type="range" min="0" max="100" value="0">
+    <label class="ctrl">边缘透光感 <b id="vGlow">40</b></label>
+    <input id="glow" type="range" min="0" max="100" value="40">
 
-  <label class="ctrl">底片圆角 <b id="vRadius">2</b></label>
-  <input id="radius" type="range" min="0" max="60" value="2">
+    <label class="ctrl">均匀度(中心热点)<b id="vUnif">0</b></label>
+    <input id="unif" type="range" min="0" max="100" value="0">
 
-  <label class="ctrl">台面色温</label>
-  <div class="swatches" id="swatches">
-    <div class="swatch on" data-c="#ffffff" style="background:#fff"></div>
-    <div class="swatch" data-c="#f5f8ff" style="background:#f5f8ff"></div>
-    <div class="swatch" data-c="#fdf3e3" style="background:#fdf3e3"></div>
-    <div class="swatch" data-c="#f3f1ea" style="background:#f3f1ea"></div>
-    <div class="swatch" data-c="#000000" style="background:#000"></div>
-  </div>
+    <label class="ctrl">像素网格 <b id="vPixel">0</b></label>
+    <input id="pixel" type="range" min="0" max="100" value="0">
 
-  <hr>
-  <label class="ctrl">导出格式</label>
-  <div class="seg" id="fmt">
-    <button class="on" data-f="jpg">JPG</button>
-    <button data-f="png">PNG</button>
-  </div>
-  <button class="btn" id="save" disabled>下载图片</button>
+    <label class="ctrl">台面色温</label>
+    <div class="swatches" id="swatches">
+      <div class="swatch on" data-c="#ffffff" style="background:#fff"></div>
+      <div class="swatch" data-c="#f5f8ff" style="background:#f5f8ff"></div>
+      <div class="swatch" data-c="#fdf3e3" style="background:#fdf3e3"></div>
+      <div class="swatch" data-c="#f3f1ea" style="background:#f3f1ea"></div>
+      <div class="swatch" data-c="#000000" style="background:#000"></div>
+    </div>
+  </section>
+
+  <!-- 第二组:胶片(底片本身相关) -->
+  <section class="group">
+    <div class="group-h">胶片</div>
+    <div class="group-sub">底片本身</div>
+
+    <label class="ctrl">画幅规格</label>
+    <div class="seg" id="filmSeg"></div>
+
+    <label class="ctrl">底片圆角 <b id="vRadius">2</b></label>
+    <input id="radius" type="range" min="0" max="60" value="2">
+  </section>
+
+  <!-- 第三组:导出 -->
+  <section class="group">
+    <div class="group-h">导出</div>
+    <label class="ctrl">格式</label>
+    <div class="seg" id="fmt">
+      <button class="on" data-f="jpg">JPG</button>
+      <button data-f="png">PNG</button>
+    </div>
+    <button class="btn" id="save" disabled>下载图片</button>
+  </section>
 </aside>
 
 <script>
@@ -463,7 +496,7 @@ function renderPiece(piece){
   if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
     const fx = originX + selected.idx*(fw+g);
     ctx.save();
-    ctx.strokeStyle = 'rgba(125,170,255,.95)';
+    ctx.strokeStyle = 'rgba(231,212,168,.95)';
     ctx.lineWidth = Math.max(3, Math.round(Math.min(fw,fh)*0.03));
     ctx.setLineDash([fh*0.09, fh*0.05]);
     rr(ctx, fx, framesY, fw, fh, rad);
@@ -486,6 +519,7 @@ function applyPreset(i){
   $('#nameplate').textContent = p.plate || '';
   $('#deckname').textContent = p.name;
   document.querySelectorAll('.dot').forEach((d,idx)=>d.classList.toggle('on', idx===i));
+  document.querySelectorAll('#presetSeg button').forEach((b,idx)=>b.classList.toggle('on', idx===i));
   render();
   pieces.forEach(layoutPieceEl);   // 不同 preset 的 .body padding 不同 -> #screen 尺寸/位置变,需按新矩形重排
   positionCutBtn();                // 选框/剪下按钮跟随新布局
@@ -826,33 +860,46 @@ function syncLabels(){
   out.radius.textContent = ui.radius.value;
 }
 
-// 胶卷 chip
-const filmsEl = $('#films');
+// —— 胶卷规格:底部 chip 与抽屉「胶片」组 seg 共用同一套切换逻辑、双向同步高亮 ——
+function selectFilm(i){
+  filmIdx = i;
+  document.querySelectorAll('#films .film').forEach((n,idx)=>n.classList.toggle('on', idx===i));
+  document.querySelectorAll('#filmSeg button').forEach((n,idx)=>n.classList.toggle('on', idx===i));
+  pieces.forEach(pc=>{                 // 切规格:canvas 尺寸变 -> 重渲并按新尺寸重排
+    renderPiece(pc);
+    layoutPieceEl(pc);
+    pc.el.classList.remove('placing'); void pc.el.offsetWidth; pc.el.classList.add('placing');
+  });
+  positionCutBtn();                    // 选框跟随新几何
+}
+const filmsEl = $('#films'), filmSeg = $('#filmSeg');
 films.forEach((f,i)=>{
-  const el = document.createElement('div');
-  el.className = 'film' + (i===filmIdx?' on':'');
-  el.innerHTML = `${f.name}<small>${f.desc}</small>`;
-  el.onclick = ()=>{
-    filmIdx = i;
-    document.querySelectorAll('.film').forEach(n=>n.classList.remove('on'));
-    el.classList.add('on');
-    pieces.forEach(pc=>{                 // 切规格:canvas 尺寸变 -> 重渲并按新尺寸重排
-      renderPiece(pc);
-      layoutPieceEl(pc);
-      pc.el.classList.remove('placing'); void pc.el.offsetWidth; pc.el.classList.add('placing');
-    });
-    positionCutBtn();                    // 选框跟随新几何
-  };
-  filmsEl.appendChild(el);
+  const chip = document.createElement('div');           // 底部 dock chip
+  chip.className = 'film' + (i===filmIdx?' on':'');
+  chip.innerHTML = `${f.name}<small>${f.desc}</small>`;
+  chip.onclick = ()=>selectFilm(i);
+  filmsEl.appendChild(chip);
+
+  const btn = document.createElement('button');         // 抽屉「胶片」组同款
+  if(i===filmIdx) btn.className = 'on';
+  btn.innerHTML = `${f.name}<small>${f.desc}</small>`;
+  btn.onclick = ()=>selectFilm(i);
+  filmSeg.appendChild(btn);
 });
 
-// 圆点
-const dots = $('#dots');
+// —— 台框预设:底部圆点与抽屉「观片台」组 seg 共用轮播 jump、由 applyPreset 同步高亮 ——
+const dots = $('#dots'), presetSeg = $('#presetSeg');
 presets.forEach((ps,i)=>{
   const d = document.createElement('div');
   d.className = 'dot' + (i===0?' on':'');
   d.title = ps.name; d.onclick = ()=>jump(i);
   dots.appendChild(d);
+
+  const btn = document.createElement('button');
+  if(i===0) btn.className = 'on';
+  btn.textContent = ps.name;
+  btn.onclick = ()=>jump(i);
+  presetSeg.appendChild(btn);
 });
 
 // —— 导入入口 ——
