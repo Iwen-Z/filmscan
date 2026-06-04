@@ -8,112 +8,124 @@
   :root{
     --ink:#e9e9ec; --sub:#a7a7b0; --line:rgba(255,255,255,.14);
     --panel:#1c1c22; --panel-line:rgba(255,255,255,.1); --accent:#f4f4f5;
+    --tray:124px;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{ height:100%; }
   body{
     font:15px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
     color:var(--ink); -webkit-font-smoothing:antialiased; overflow:hidden;
-    /* 俯视深色桌面:暗木/毡布渐变 + 极淡暗角 */
     background:
       radial-gradient(120% 90% at 50% 38%, #34343c 0%, #232329 46%, #161619 100%),
       #161619;
   }
-  /* 桌面极淡噪点纹理,增加实体桌面质感 */
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; opacity:.05; z-index:0;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* 顶部标题(轻量,悬浮) */
-  header{ position:fixed; top:0; left:0; right:0; text-align:center; padding:20px 16px 0;
+  header{ position:fixed; top:0; left:0; right:var(--tray); text-align:center; padding:18px 16px 0;
           z-index:5; pointer-events:none; }
   header h1{ font-size:15px; font-weight:600; letter-spacing:3px; color:#fff; opacity:.85; }
   header p{ color:var(--sub); font-size:12px; margin-top:3px; opacity:.7; }
 
-  /* 场景舞台:占满视口,台子居中 */
-  .scene{ position:relative; z-index:1; height:100%; display:flex; align-items:center;
-          justify-content:center; padding:64px 16px; }
+  .scene{ position:fixed; inset:0; right:var(--tray); z-index:1; display:flex;
+          align-items:center; justify-content:center; padding:58px 70px 112px; }
 
-  /* 观片台:机身外框 + 发光面板。translateX/opacity 用于轮播滑动变身 */
+  /* 观片台:固定大小的实体台子 */
   .lightbox{ position:relative; transition:transform .42s cubic-bezier(.4,0,.2,1), opacity .42s ease;
-             will-change:transform,opacity; max-width:min(86vw,720px); }
-  .lightbox.sliding-left{ transform:translateX(-26px); opacity:0; }
-  .lightbox.sliding-right{ transform:translateX(26px); opacity:0; }
+             will-change:transform,opacity;
+             width:min(64vw, calc(60vh * 1.33), 820px); }
+  .lightbox.sliding-left{ transform:translateX(-34px); opacity:0; }
+  .lightbox.sliding-right{ transform:translateX(34px); opacity:0; }
 
-  /* 机身外框基样式,各形态覆盖 */
-  .body{ position:relative; border-radius:20px; padding:30px;
+  .body{ position:relative; border-radius:20px;
          transition:padding .3s ease, border-radius .3s ease, background .3s ease, box-shadow .3s ease; }
-  /* 面板(照片所在的发光面);其发光由各形态的 box-shadow + ::after 控制 */
-  .screen{ position:relative; border-radius:8px; overflow:hidden; line-height:0;
-           display:flex; align-items:center; justify-content:center;
-           min-width:240px; min-height:170px; }
+  /* 发光台面:固定 4:3,canvas(整块台面)铺满 */
+  .screen{ position:relative; border-radius:8px; overflow:hidden;
+           width:100%; aspect-ratio:4/3; background:rgba(255,255,255,.05);
+           display:flex; align-items:center; justify-content:center; }
+  .screen.drag-on{ outline:3px dashed rgba(120,150,255,.85); outline-offset:-8px; }
 
-  /* —— 专业观片台:浅灰塑料宽边,大面积中性白发光 —— */
-  .body.pro{ background:linear-gradient(#d9d9dc,#bdbdc2); padding:34px;
+  .body.pro{ background:linear-gradient(#d9d9dc,#bdbdc2); padding:5.5%;
              box-shadow:0 26px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.7); }
   .body.pro .screen{ border-radius:4px; box-shadow:0 0 90px 26px rgba(255,255,255,.5); }
-
-  /* —— iPad:深空灰铝边,大圆角,边缘高光 —— */
-  .body.ipad{ background:linear-gradient(#3a3a40,#202024); padding:18px; border-radius:30px;
+  .body.ipad{ background:linear-gradient(#3a3a40,#202024); padding:2.8%; border-radius:30px;
               box-shadow:0 26px 60px rgba(0,0,0,.6),
                          inset 0 0 0 1px rgba(255,255,255,.12), inset 0 2px 1px rgba(255,255,255,.18); }
   .body.ipad .screen{ border-radius:14px; box-shadow:0 0 80px 18px rgba(210,225,255,.45); }
-
-  /* —— 手机:窄黑边,更大圆角,更小 —— */
-  .body.phone{ background:#0c0c0e; padding:9px; border-radius:34px; max-width:300px;
-               box-shadow:0 22px 50px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.08); }
-  .body.phone .screen{ border-radius:26px; box-shadow:0 0 70px 14px rgba(205,222,255,.5); }
-  .lightbox.is-phone{ max-width:340px; }
-
-  /* —— 暖光老灯箱:米黄旧塑料厚边,暖光 —— */
-  .body.vintage{ background:linear-gradient(#efe6d2,#d8c9a8); padding:40px; border-radius:14px;
+  .body.vintage{ background:linear-gradient(#efe6d2,#d8c9a8); padding:6.5%; border-radius:14px;
                  box-shadow:0 26px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.5),
                             inset 0 -2px 4px rgba(120,90,40,.2); }
   .body.vintage .screen{ border-radius:3px; box-shadow:0 0 96px 30px rgba(255,214,150,.5); }
 
-  /* 设备铭牌/小细节 */
-  .nameplate{ position:absolute; bottom:9px; left:50%; transform:translateX(-50%);
-              font-size:10px; letter-spacing:2px; opacity:.5; pointer-events:none; }
-  .body.pro .nameplate, .body.vintage .nameplate{ color:#555; }
-  .body.phone .notch{ position:absolute; top:7px; left:50%; transform:translateX(-50%);
-              width:46px; height:5px; border-radius:3px; background:#000; z-index:2; }
+  .nameplate{ position:absolute; bottom:1.5%; left:50%; transform:translateX(-50%);
+              font-size:10px; letter-spacing:2px; opacity:.5; pointer-events:none; color:#555; }
 
-  canvas{ display:none; max-width:100%; max-height:64vh; }
-  .placeholder{ color:var(--sub); font-size:13px; text-align:center; padding:48px 28px;
-                cursor:pointer; line-height:1.8; }
-  .body.pro .placeholder,.body.vintage .placeholder{ color:#6b6b6b; }
-  .placeholder b{ display:block; font-size:15px; color:inherit; opacity:.9; }
-  .screen.hover{ outline:2px dashed rgba(120,150,255,.6); outline-offset:-6px; }
+  /* 台面画布:铺满 screen */
+  canvas{ display:none; width:100%; height:100%; object-fit:contain; }
+  canvas.placing{ animation:slideUp .5s cubic-bezier(.2,.7,.2,1); }
+  @keyframes slideUp{ from{ transform:translateY(6%); opacity:0; } to{ transform:none; opacity:1; } }
 
-  /* 轮播箭头 */
+  .placeholder{ position:absolute; inset:0; display:flex; flex-direction:column;
+                align-items:center; justify-content:center; gap:6px;
+                color:var(--sub); font-size:13px; text-align:center; cursor:pointer; line-height:1.7; }
+  .placeholder b{ font-size:15px; color:inherit; opacity:.9; }
+
+  /* 右侧照片候选区 */
+  .tray{ position:fixed; top:0; right:0; bottom:0; width:var(--tray); z-index:6;
+         background:rgba(20,20,24,.66); backdrop-filter:blur(10px);
+         border-left:1px solid var(--line); display:flex; flex-direction:column; padding:14px 0; }
+  .tray .add{ flex:0 0 auto; margin:0 14px 12px; padding:14px 0; cursor:pointer;
+              border:1.5px dashed var(--line); border-radius:10px; text-align:center;
+              color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
+  .tray .add:hover, .tray.drag-on .add{ border-color:#7d96ff; color:#cdd6ff; }
+  .tray .add b{ display:block; font-size:20px; font-weight:400; color:inherit; }
+  .thumbs{ flex:1 1 auto; overflow-y:auto; padding:0 14px 8px;
+           display:flex; flex-direction:column; gap:10px; }
+  .thumb{ position:relative; border-radius:8px; overflow:hidden; cursor:grab;
+          border:2px solid transparent; aspect-ratio:1; background:#000;
+          transition:border-color .15s; }
+  .thumb:active{ cursor:grabbing; }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+  .thumb.on{ border-color:#fff; }
+  .thumb .del{ position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%;
+               background:rgba(0,0,0,.6); color:#fff; border:none; font-size:12px; line-height:18px;
+               cursor:pointer; opacity:0; transition:.15s; padding:0; }
+  .thumb:hover .del{ opacity:1; }
+  .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
+
   .arrow{ position:fixed; top:50%; transform:translateY(-50%); z-index:6;
-          width:46px; height:46px; border-radius:50%; border:1px solid var(--line);
+          width:44px; height:44px; border-radius:50%; border:1px solid var(--line);
           background:rgba(28,28,34,.6); color:#fff; font-size:20px; cursor:pointer;
-          backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center;
-          transition:.15s; }
+          backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; transition:.15s; }
   .arrow:hover{ background:rgba(50,50,60,.85); }
-  .arrow.prev{ left:max(14px,3vw); }
-  .arrow.next{ right:max(14px,3vw); }
+  .arrow.prev{ left:14px; }
+  .arrow.next{ right:calc(var(--tray) + 14px); }
 
-  /* 底部:当前台名 + 圆点指示 */
-  .dock{ position:fixed; bottom:22px; left:0; right:0; z-index:6;
-         display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:none; }
+  /* 底部:胶卷规格 + 台名 + 圆点 */
+  .dock{ position:fixed; bottom:16px; left:0; right:var(--tray); z-index:6;
+         display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none; }
+  .films{ display:flex; gap:7px; pointer-events:auto; }
+  .film{ padding:5px 12px; border-radius:14px; font-size:12px; cursor:pointer; line-height:1.2;
+         border:1px solid var(--line); background:rgba(28,28,34,.55); color:var(--sub);
+         backdrop-filter:blur(8px); transition:.15s; }
+  .film:hover{ color:#fff; }
+  .film.on{ background:#fff; color:#18181b; border-color:#fff; }
+  .film small{ display:block; font-size:9px; opacity:.6; }
   .deckname{ font-size:13px; letter-spacing:2px; color:#fff; opacity:.8; }
   .dots{ display:flex; gap:9px; pointer-events:auto; }
-  .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.28);
-        cursor:pointer; transition:.2s; }
+  .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.28); cursor:pointer; transition:.2s; }
   .dot.on{ background:#fff; transform:scale(1.25); }
 
-  /* 微调按钮 + 抽屉 */
-  .gear{ position:fixed; top:18px; right:18px; z-index:7; width:42px; height:42px;
+  .gear{ position:fixed; top:16px; left:16px; z-index:7; width:42px; height:42px;
          border-radius:50%; border:1px solid var(--line); background:rgba(28,28,34,.6);
          color:#fff; font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
   .gear:hover{ background:rgba(50,50,60,.85); }
-  .drawer{ position:fixed; top:0; right:0; bottom:0; width:320px; max-width:88vw; z-index:9;
-           background:var(--panel); border-left:1px solid var(--panel-line);
-           padding:22px 20px; overflow-y:auto; transform:translateX(100%);
-           transition:transform .32s cubic-bezier(.4,0,.2,1); box-shadow:-12px 0 40px rgba(0,0,0,.4); }
+  .drawer{ position:fixed; top:0; left:0; bottom:0; width:320px; max-width:88vw; z-index:9;
+           background:var(--panel); border-right:1px solid var(--panel-line);
+           padding:22px 20px; overflow-y:auto; transform:translateX(-100%);
+           transition:transform .32s cubic-bezier(.4,0,.2,1); box-shadow:12px 0 40px rgba(0,0,0,.4); }
   .drawer.open{ transform:translateX(0); }
   .drawer h2{ font-size:14px; font-weight:600; letter-spacing:1px; margin-bottom:4px; }
   .drawer .close{ position:absolute; top:16px; right:16px; background:none; border:none;
@@ -133,61 +145,71 @@
   .seg button{ flex:1; background:transparent; color:var(--sub); border:1px solid var(--line);
                padding:8px; font-weight:500; }
   .seg button.on{ background:#fff; color:#18181b; border-color:#fff; }
-  .btn{ width:100%; border:none; padding:12px; font-weight:600; margin-top:16px;
-        background:#fff; color:#18181b; }
-  .btn.ghost{ background:transparent; color:var(--ink); border:1px solid var(--line); margin-top:8px; }
+  .btn{ width:100%; border:none; padding:12px; font-weight:600; margin-top:16px; background:#fff; color:#18181b; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
   hr{ border:none; border-top:1px solid var(--panel-line); margin:20px 0 4px; }
 
-  @media(max-width:520px){
-    .lightbox{ max-width:92vw; }
-    .arrow{ width:40px; height:40px; font-size:18px; }
+  @media(max-width:680px){
+    :root{ --tray:0px; }
+    .tray{ top:auto; left:0; right:0; bottom:0; width:auto; height:92px; flex-direction:row;
+           border-left:none; border-top:1px solid var(--line); padding:10px 12px; align-items:center; }
+    .tray .add{ margin:0 10px 0 0; width:62px; height:100%; padding:0;
+                display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .thumbs{ flex-direction:row; overflow-x:auto; overflow-y:hidden; padding:0; height:100%; }
+    .thumb{ height:100%; aspect-ratio:1; flex:0 0 auto; }
+    .tray .empty{ margin:0; }
+    .scene{ inset:0; bottom:92px; padding:50px 14px 116px; }
+    .dock{ right:0; bottom:100px; }
+    .films{ flex-wrap:wrap; justify-content:center; }
+    .arrow.next{ right:14px; }
+    header{ right:0; }
   }
 </style>
 </head>
 <body>
 <header>
   <h1>观 片 台</h1>
-  <p>把底片放上发光的台面 · 左右切换不同观片台</p>
+  <p>把右侧照片拖到台面上 · 选胶卷规格 · 切换观片台</p>
 </header>
 
 <button class="gear" id="gear" title="微调">⚙</button>
 
 <div class="scene">
   <button class="arrow prev" id="prev" aria-label="上一台">‹</button>
-
   <div class="lightbox" id="lightbox">
     <div class="body pro" id="bodyEl">
-      <span class="notch" hidden></span>
       <div class="screen" id="screen">
         <canvas id="cv"></canvas>
         <div class="placeholder" id="placeholder">
-          <b>把照片放上来</b>
-          点击或拖入 · JPG / PNG
+          <b>把底片放上台面</b>
+          从右侧拖一张过来<br>或点这里导入
         </div>
       </div>
       <span class="nameplate" id="nameplate">FILMSCAN</span>
     </div>
   </div>
-
   <button class="arrow next" id="next" aria-label="下一台">›</button>
 </div>
-<input id="file" type="file" accept="image/*" hidden>
+
+<aside class="tray" id="tray">
+  <div class="add" id="add"><b>＋</b>选照片</div>
+  <div class="thumbs" id="thumbs">
+    <div class="empty" id="trayEmpty">还没有照片<br>点上方导入</div>
+  </div>
+</aside>
+<input id="file" type="file" accept="image/*" multiple hidden>
 
 <div class="dock">
+  <div class="films" id="films"></div>
   <div class="deckname" id="deckname">专业观片台</div>
   <div class="dots" id="dots"></div>
 </div>
 
-<!-- 微调抽屉 -->
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer">
   <button class="close" id="closeDrawer">×</button>
   <h2>微调</h2>
   <p style="color:var(--sub);font-size:12px">在当前观片台基础上精修</p>
-
-  <label class="ctrl">白边粗细 <b id="vBorder">8%</b></label>
-  <input id="border" type="range" min="0" max="25" value="8">
 
   <label class="ctrl">边缘透光感 <b id="vGlow">40</b></label>
   <input id="glow" type="range" min="0" max="100" value="40">
@@ -198,10 +220,10 @@
   <label class="ctrl">像素网格 <b id="vPixel">0</b></label>
   <input id="pixel" type="range" min="0" max="100" value="0">
 
-  <label class="ctrl">圆角 <b id="vRadius">2</b></label>
+  <label class="ctrl">底片圆角 <b id="vRadius">2</b></label>
   <input id="radius" type="range" min="0" max="60" value="2">
 
-  <label class="ctrl">底色 / 色温</label>
+  <label class="ctrl">台面色温</label>
   <div class="swatches" id="swatches">
     <div class="swatch on" data-c="#ffffff" style="background:#fff"></div>
     <div class="swatch" data-c="#f5f8ff" style="background:#f5f8ff"></div>
@@ -217,28 +239,41 @@
     <button data-f="png">PNG</button>
   </div>
   <button class="btn" id="save" disabled>下载图片</button>
-  <button class="btn ghost" id="reset" disabled>换一张</button>
 </aside>
 
 <script>
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), ctx = cv.getContext('2d');
-let img = null, fmt = 'jpg';
+let fmt = 'jpg';
 
-// —— 观片台预设：一组 canvas + 外观参数 ——
-const presets = [
-  { name:'专业观片台', frame:'pro',     base:'#ffffff', glow:40, border:8,  radius:2,  unif:0,  pixel:0,  plate:'FILMSCAN PRO' },
-  { name:'iPad',       frame:'ipad',    base:'#f5f8ff', glow:55, border:5,  radius:6,  unif:0,  pixel:22, plate:'' },
-  { name:'手机',       frame:'phone',   base:'#f3f7ff', glow:60, border:4,  radius:8,  unif:0,  pixel:34, plate:'' },
-  { name:'暖光老灯箱', frame:'vintage', base:'#fdf3e3', glow:50, border:10, radius:1,  unif:55, pixel:0,  plate:'LUMIBOX' },
+// —— 候选照片 ——
+let shots = [];          // { url, img }
+let activeImg = null;
+
+// —— 胶卷规格:ratio = 底片长边占台面对应边的比例(越小底片越小、台面留白越多) ——
+const films = [
+  { name:'110',  desc:'微型', ratio:0.26 },
+  { name:'135',  desc:'35mm', ratio:0.40 },
+  { name:'120',  desc:'6×6',  ratio:0.58 },
+  { name:'4×5',  desc:'大画幅', ratio:0.78 },
 ];
-let cur = 0;                 // 当前观片台索引
-let p = {...presets[0]};     // 当前生效参数(preset 拷贝,滑块在其上覆盖)
+let filmIdx = 1;          // 默认 135
 
-const ui  = { border:$('#border'), glow:$('#glow'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
-const out = { border:$('#vBorder'), glow:$('#vGlow'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
+// —— 观片台预设(已移除手机) ——
+const presets = [
+  { name:'专业观片台', frame:'pro',     base:'#ffffff', glow:40, radius:2,  unif:0,  pixel:0,  plate:'FILMSCAN PRO' },
+  { name:'iPad',       frame:'ipad',    base:'#f5f8ff', glow:55, radius:6,  unif:0,  pixel:22, plate:'' },
+  { name:'暖光老灯箱', frame:'vintage', base:'#fdf3e3', glow:50, radius:1,  unif:55, pixel:0,  plate:'LUMIBOX' },
+];
+let cur = 0;
+let p = {...presets[0]};
 
-// —— 圆角矩形路径 ——
+// 台面画布分辨率(4:3),导出尺寸
+const TW = 2000, TH = 1500;
+
+const ui  = { glow:$('#glow'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
+const out = { glow:$('#vGlow'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
+
 function rr(x,y,w,h,r){
   r = Math.min(r, w/2, h/2);
   ctx.beginPath();
@@ -250,133 +285,143 @@ function rr(x,y,w,h,r){
   ctx.closePath();
 }
 
-// —— 渲染照片到 canvas（含色温/白边/透光/均匀度/像素，可导出）——
+// —— 渲染整张台面 + 居中底片 ——
 function render(){
-  if(!img) return;
+  if(!activeImg) return;
+  const img = activeImg;
   const iw = img.naturalWidth, ih = img.naturalHeight;
-  const minSide = Math.min(iw, ih);
-  const b   = Math.round(minSide * p.border/100);
-  const rad = Math.round(minSide * p.radius/100/2);
-  const W = iw + b*2, H = ih + b*2;
-  cv.width = W; cv.height = H;
+  cv.width = TW; cv.height = TH;
 
-  // 底色 / 色温
+  // 1) 发光台面底色(色温)
   ctx.fillStyle = p.base;
-  ctx.fillRect(0,0,W,H);
+  ctx.fillRect(0,0,TW,TH);
 
-  ctx.save();
-  if(rad>0){ rr(b,b,iw,ih,rad); ctx.clip(); }
-  ctx.drawImage(img, b, b, iw, ih);
+  // 2) 底片大小:按胶卷规格 contain 进 (TW*ratio × TH*ratio) 框
+  const ratio = films[filmIdx].ratio;
+  const s = Math.min(TW*ratio/iw, TH*ratio/ih);
+  const dw = iw*s, dh = ih*s;
+  const dx = (TW-dw)/2, dy = (TH-dh)/2;
+  const rad = Math.round(Math.min(dw,dh) * p.radius/100/2);
 
-  // 边缘透光：四边白色内发光
+  // 3) 底片边缘透光溢光(台面光从底片四周透出的过曝白晕)
   if(p.glow>0){
-    const alpha = (p.glow/100)*0.85;
-    const gw = Math.round(minSide * 0.10);
-    const sides = [
-      [b,b,iw,gw, 0,b,0,b+gw],
-      [b,b+ih-gw,iw,gw, 0,b+ih,0,b+ih-gw],
-      [b,b,gw,ih, b,0,b+gw,0],
-      [b+iw-gw,b,gw,ih, b+iw,0,b+iw-gw,0],
-    ];
-    for(const [x,y,w,h,x0,y0,x1,y1] of sides){
-      const g = ctx.createLinearGradient(x0,y0,x1,y1);
-      g.addColorStop(0, 'rgba(255,255,255,'+alpha+')');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(x,y,w,h);
-    }
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.9)+')';
+    ctx.shadowBlur  = Math.round(Math.min(dw,dh)*0.12);
+    ctx.fillStyle = '#fff';
+    if(rad>0){ rr(dx,dy,dw,dh,rad); ctx.fill(); } else ctx.fillRect(dx,dy,dw,dh);
+    ctx.restore();
   }
 
-  // 均匀度：中心亮、四周略暗(廉价灯箱热点)
+  // 4) 底片
+  ctx.save();
+  if(rad>0){ rr(dx,dy,dw,dh,rad); ctx.clip(); }
+  ctx.drawImage(img, dx,dy,dw,dh);
+  ctx.restore();
+
+  // 5) 均匀度热点:整台面中心亮、四周暗
   if(p.unif>0){
     const a = (p.unif/100)*0.5;
-    const cx = W/2, cy = H/2;
-    const rg = ctx.createRadialGradient(cx,cy,Math.min(W,H)*0.18, cx,cy,Math.max(W,H)*0.62);
+    const rg = ctx.createRadialGradient(TW/2,TH/2,Math.min(TW,TH)*0.16, TW/2,TH/2,Math.max(TW,TH)*0.62);
     rg.addColorStop(0,'rgba(0,0,0,0)');
     rg.addColorStop(1,'rgba(0,0,0,'+a+')');
-    ctx.fillStyle = rg; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = rg; ctx.fillRect(0,0,TW,TH);
   }
 
-  // 像素网格：极淡，还原凑近拍屏幕
+  // 6) 像素网格:整台面(屏幕栅格)
   if(p.pixel>0){
     const a = (p.pixel/100)*0.05;
-    const cell = Math.max(3, Math.round(minSide/520)); // 随分辨率缩放的网格尺寸
+    const cell = Math.max(3, Math.round(TW/640));
     const pat = document.createElement('canvas');
     pat.width = pat.height = cell;
     const pc = pat.getContext('2d');
     pc.fillStyle = 'rgba(0,0,0,'+a+')';
-    pc.fillRect(0,0,cell,1);          // 横线
-    pc.fillRect(0,0,1,cell);          // 竖线
+    pc.fillRect(0,0,cell,1); pc.fillRect(0,0,1,cell);
     ctx.fillStyle = ctx.createPattern(pat,'repeat');
-    ctx.fillRect(b,b,iw,ih);
+    ctx.fillRect(0,0,TW,TH);
   }
-  ctx.restore();
 }
 
-// —— 应用观片台预设到 canvas 参数 + 场景外框 + 抽屉滑块 ——
 function applyPreset(i){
   cur = i;
   p = {...presets[i]};
-  // 抽屉滑块同步
-  ui.border.value = p.border; ui.glow.value = p.glow; ui.unif.value = p.unif;
-  ui.pixel.value = p.pixel;   ui.radius.value = p.radius;
+  ui.glow.value = p.glow; ui.unif.value = p.unif; ui.pixel.value = p.pixel; ui.radius.value = p.radius;
   syncLabels();
-  // swatch 高亮跟随 base(找不到则取消高亮)
   document.querySelectorAll('.swatch').forEach(s=>
     s.classList.toggle('on', s.dataset.c.toLowerCase()===p.base.toLowerCase()));
-  // 场景外框
-  const body = $('#bodyEl');
-  body.className = 'body ' + p.frame;
-  $('#lightbox').classList.toggle('is-phone', p.frame==='phone');
-  $('.notch').hidden = p.frame!=='phone';
+  $('#bodyEl').className = 'body ' + p.frame;
   $('#nameplate').textContent = p.plate || '';
   $('#deckname').textContent = p.name;
   document.querySelectorAll('.dot').forEach((d,idx)=>d.classList.toggle('on', idx===i));
   render();
 }
 
-// —— 轮播：滑动变身切换 ——
+// —— 轮播 ——
 let animating = false;
-function go(dir){               // dir: +1 下一台 / -1 上一台
+function go(dir){
   if(animating) return;
   animating = true;
   const lb = $('#lightbox');
   const next = (cur + dir + presets.length) % presets.length;
-  lb.classList.add(dir>0 ? 'sliding-left' : 'sliding-right');   // 滑出
+  lb.classList.add(dir>0 ? 'sliding-left' : 'sliding-right');
   setTimeout(()=>{
     applyPreset(next);
-    // 关闭过渡,瞬移到相反侧
     lb.style.transition = 'none';
     lb.classList.remove('sliding-left','sliding-right');
     lb.classList.add(dir>0 ? 'sliding-right' : 'sliding-left');
-    void lb.offsetWidth;                                        // 强制 reflow
-    // 恢复过渡,滑入中心
+    void lb.offsetWidth;
     lb.style.transition = '';
     lb.classList.remove('sliding-left','sliding-right');
     setTimeout(()=>animating=false, 430);
   }, 420);
 }
-function jump(i){
-  if(animating || i===cur) return;
-  go(i>cur ? 1 : -1);
-  // 若跨多台,jump 简化为单步方向;连续点圆点即可
+function jump(i){ if(!animating && i!==cur) go(i>cur ? 1 : -1); }
+
+// —— 放底片上台面(滑入动画) ——
+function place(img){
+  activeImg = img;
+  $('#placeholder').style.display='none';
+  cv.style.display='block';
+  $('#save').disabled=false;
+  render();
+  cv.classList.remove('placing'); void cv.offsetWidth; cv.classList.add('placing');
+  document.querySelectorAll('.thumb').forEach(t=>
+    t.classList.toggle('on', shots[+t.dataset.i] && shots[+t.dataset.i].img===img));
 }
 
-// —— 文件加载 ——
-function loadFile(f){
-  if(!f || !f.type.startsWith('image/')) return;
-  const im = new Image();
-  im.onload = () => {
-    img = im;
-    $('#placeholder').style.display='none';
-    cv.style.display='block';
-    $('#save').disabled=false; $('#reset').disabled=false;
-    render();
-  };
-  im.src = URL.createObjectURL(f);
+// —— 候选区 ——
+function addFiles(list){
+  const imgs = [...list].filter(f=>f.type.startsWith('image/'));
+  if(!imgs.length) return;
+  let firstNew = null;
+  imgs.forEach(f=>{
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    const shot = { url, img:im };
+    im.onload = ()=>{ if(firstNew===shot && !activeImg) place(im); };
+    im.src = url;
+    shots.push(shot);
+    if(!firstNew) firstNew = shot;
+  });
+  renderTray();
+}
+function renderTray(){
+  const wrap = $('#thumbs');
+  wrap.querySelectorAll('.thumb').forEach(n=>n.remove());
+  $('#trayEmpty').style.display = shots.length ? 'none' : 'block';
+  shots.forEach((s,i)=>{
+    const t = document.createElement('div');
+    t.className = 'thumb' + (activeImg===s.img ? ' on':'');
+    t.dataset.i = i; t.draggable = true;
+    t.innerHTML = `<img src="${s.url}" alt=""><button class="del" title="移除">×</button>`;
+    wrap.appendChild(t);
+  });
 }
 
+// —— 导出 ——
+const file = $('#file');
 function save(){
-  if(!img) return;
+  if(!activeImg) return;
   const type = fmt==='png' ? 'image/png' : 'image/jpeg';
   cv.toBlob(blob => {
     const a = document.createElement('a');
@@ -388,42 +433,92 @@ function save(){
 }
 
 function syncLabels(){
-  out.border.textContent = ui.border.value + '%';
   out.glow.textContent   = ui.glow.value;
   out.unif.textContent   = ui.unif.value;
   out.pixel.textContent  = ui.pixel.value;
   out.radius.textContent = ui.radius.value;
 }
 
-// —— 构建圆点 ——
+// 胶卷 chip
+const filmsEl = $('#films');
+films.forEach((f,i)=>{
+  const el = document.createElement('div');
+  el.className = 'film' + (i===filmIdx?' on':'');
+  el.innerHTML = `${f.name}<small>${f.desc}</small>`;
+  el.onclick = ()=>{
+    filmIdx = i;
+    document.querySelectorAll('.film').forEach(n=>n.classList.remove('on'));
+    el.classList.add('on');
+    if(activeImg){ render(); cv.classList.remove('placing'); void cv.offsetWidth; cv.classList.add('placing'); }
+  };
+  filmsEl.appendChild(el);
+});
+
+// 圆点
 const dots = $('#dots');
 presets.forEach((ps,i)=>{
   const d = document.createElement('div');
   d.className = 'dot' + (i===0?' on':'');
-  d.title = ps.name;
-  d.onclick = ()=>jump(i);
+  d.title = ps.name; d.onclick = ()=>jump(i);
   dots.appendChild(d);
 });
 
-// —— 事件 ——
-const file = $('#file'), screen = $('#screen');
-$('#placeholder').onclick = () => file.click();
-screen.onclick = e => { if(!img) file.click(); };
-file.onchange = e => loadFile(e.target.files[0]);
-['dragover','dragenter'].forEach(ev=>screen.addEventListener(ev,e=>{e.preventDefault();screen.classList.add('hover');}));
-['dragleave','drop'].forEach(ev=>screen.addEventListener(ev,e=>{e.preventDefault();screen.classList.remove('hover');}));
-screen.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+// —— 导入入口 ——
+$('#add').onclick = ()=>file.click();
+$('#placeholder').onclick = ()=>file.click();
+file.onchange = e => { addFiles(e.target.files); file.value=''; };
 
+// 候选区:点放上台面 / 删除 / 拖拽起点
+$('#thumbs').addEventListener('click', e=>{
+  const t = e.target.closest('.thumb'); if(!t) return;
+  const i = +t.dataset.i;
+  if(e.target.classList.contains('del')){
+    URL.revokeObjectURL(shots[i].url);
+    const removed = shots[i].img;
+    shots.splice(i,1);
+    if(activeImg===removed){
+      activeImg=null; cv.style.display='none'; $('#placeholder').style.display=''; $('#save').disabled=true;
+    }
+    renderTray(); return;
+  }
+  place(shots[i].img);
+});
+$('#thumbs').addEventListener('dragstart', e=>{
+  const t = e.target.closest('.thumb'); if(!t) return;
+  e.dataTransfer.setData('text/fs-thumb', t.dataset.i);
+  e.dataTransfer.effectAllowed = 'copy';
+});
+
+// 台面接收拖放
+const screen = $('#screen');
+['dragover','dragenter'].forEach(ev=>screen.addEventListener(ev,e=>{
+  e.preventDefault(); screen.classList.add('drag-on'); e.dataTransfer.dropEffect='copy';
+}));
+['dragleave','dragend'].forEach(ev=>screen.addEventListener(ev,e=>screen.classList.remove('drag-on')));
+screen.addEventListener('drop', e=>{
+  e.preventDefault(); screen.classList.remove('drag-on');
+  const idx = e.dataTransfer.getData('text/fs-thumb');
+  if(idx!=='' && shots[+idx]){ place(shots[+idx].img); return; }
+  if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+
+// 候选区:外部文件拖入即导入
+const tray = $('#tray');
+['dragover','dragenter'].forEach(ev=>tray.addEventListener(ev,e=>{
+  if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); tray.classList.add('drag-on'); }
+}));
+['dragleave','drop'].forEach(ev=>tray.addEventListener(ev,e=>tray.classList.remove('drag-on')));
+tray.addEventListener('drop', e=>{
+  if(e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files); }
+});
+
+// 轮播交互
 $('#prev').onclick = ()=>go(-1);
 $('#next').onclick = ()=>go(1);
-
-// 键盘左右切换
 window.addEventListener('keydown', e=>{
   if(e.key==='ArrowLeft') go(-1);
   if(e.key==='ArrowRight') go(1);
 });
-
-// 触摸滑动切换
 let tx=null;
 const scene = $('.scene');
 scene.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; }, {passive:true});
@@ -434,13 +529,11 @@ scene.addEventListener('touchend', e=>{
   tx=null;
 });
 
-// 滑块覆盖当前参数
+// 滑块
 for(const k in ui) ui[k].oninput = () => {
-  p.border=+ui.border.value; p.glow=+ui.glow.value; p.unif=+ui.unif.value;
-  p.pixel=+ui.pixel.value;   p.radius=+ui.radius.value;
+  p.glow=+ui.glow.value; p.unif=+ui.unif.value; p.pixel=+ui.pixel.value; p.radius=+ui.radius.value;
   syncLabels(); render();
 };
-
 $('#swatches').onclick = e => {
   if(!e.target.dataset.c) return;
   p.base = e.target.dataset.c;
@@ -454,19 +547,14 @@ $('#fmt').onclick = e => {
   e.target.classList.add('on');
 };
 $('#save').onclick = save;
-$('#reset').onclick = () => file.click();
 
-// 抽屉开关
+// 抽屉
 const drawer = $('#drawer'), scrim = $('#scrim');
-function toggleDrawer(open){
-  drawer.classList.toggle('open', open);
-  scrim.classList.toggle('on', open);
-}
+function toggleDrawer(open){ drawer.classList.toggle('open', open); scrim.classList.toggle('on', open); }
 $('#gear').onclick = ()=>toggleDrawer(true);
 $('#closeDrawer').onclick = ()=>toggleDrawer(false);
 scrim.onclick = ()=>toggleDrawer(false);
 
-// 初始化
 applyPreset(0);
 </script>
 </body>
