@@ -17,13 +17,22 @@
 - 「微调」抽屉:白边粗细 / 边缘透光感 / **均匀度热点** / **像素网格** / 圆角 / 底色色温
 - 导出**原图分辨率**的干净灯箱白边图(含色温/透光/均匀度/像素,不含机身外框)
 
-## 使用
+## Quick Start
 
-直接在浏览器打开 `index.html` 即可,零依赖、零构建。
+```bash
+npm install && npm run dev   # → http://localhost:5173
+```
+
+浏览器会自动加载,拖照片进卷、把卷拖上台面即可。脚本一览:
+
+- `npm run dev` — 开发服务器(HMR,默认 5173)
+- `npm run build` — 产出静态 `dist/`(可直接托管)
+- `npm run preview` — 本地预览 `dist/` 产物(默认 4173)
+- `npm run selftest:headless` — 无头 Chrome 一键跑页内自检,判 PASS/FAIL
 
 ## 技术
 
-单文件 HTML + Canvas,无框架、无后端。可白嫖部署到 GitHub Pages / Vercel。
+原生 **TypeScript + Vite** + Canvas,**运行时零 UI 框架**、无后端。`npm run build` 出静态 `dist/`,可白嫖部署到 GitHub Pages / Vercel(GitHub Pages 子路径部署见 `CLAUDE.md`「部署」)。
 
 ## 开发 / 自检
 
