@@ -77,6 +77,13 @@
   .piece:hover .piece-del{ opacity:1; }
   @keyframes slideUp{ from{ transform:translateY(6%); opacity:0; } to{ transform:none; opacity:1; } }
 
+  /* 阶段2:选中某帧后浮在该帧上方的「剪下」按钮 */
+  .cut-btn{ position:fixed; z-index:10; transform:translate(-50%,-100%);
+            background:#7d96ff; color:#10131f; border:none; border-radius:8px;
+            padding:6px 12px; font:600 12px/1 inherit; cursor:pointer;
+            box-shadow:0 6px 18px rgba(0,0,0,.45); white-space:nowrap; }
+  .cut-btn:hover{ background:#9aacff; }
+
   .placeholder{ position:absolute; inset:0; display:flex; flex-direction:column;
                 align-items:center; justify-content:center; gap:6px;
                 color:var(--sub); font-size:13px; text-align:center; cursor:pointer; line-height:1.7; }
@@ -288,9 +295,12 @@ const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const rollById = id => rolls.find(r => String(r.id) === String(id));
 
 // —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——
-let pieces = [];         // [{ id, rollId, x, y, z, el, canvas, ctx }]  x/y=相对观片台屏幕左上角的 nominal 坐标(可负/超界)
+//   piece.shots = null   -> 渲染所属卷的全部帧(长条)
+//   piece.shots = [shot] -> 只渲染这些帧(阶段2「剪下」的单张就是 N=1 的 piece;shot 仍是原卷里同一对象,非破坏)
+let pieces = [];         // [{ id, rollId, x, y, z, el, canvas, ctx, shots }]  x/y=相对观片台屏幕左上角的 nominal 坐标(可负/超界)
 let pieceSeq = 1;
 let zTop = 0;
+let selected = null;     // 阶段2:当前选中的帧 { piece, idx },用于「剪下」
 const deckScale = () => screen.clientWidth / TW;   // nominal px -> CSS px
 
 // —— 胶卷规格 ——
@@ -364,14 +374,15 @@ function renderBg(){
 //   坐标全部在该 piece 的 canvas 局部坐标系,band 整体偏移 PAD(给 glow 留边)
 function pieceLayout(piece){
   const roll = rollById(piece.rollId);
-  if(!roll || !roll.shots.length) return null;
+  const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
+  if(!shots || !shots.length) return null;
   const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
   const fh = TH * (0.32 + ratio*0.40);   // 帧高随规格变,留出多帧空间
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基
   const m  = fh * 0.16;                  // 上下片基/齿孔区
   const BH = fh + 2*m;                    // 胶卷带高
-  const N  = roll.shots.length;
+  const N  = shots.length;
   const CW = N*fw + (N-1)*g;              // 所有帧内容宽
   const pad = TW * 0.06;                  // 胶卷两端片头
   const stripW = CW + 2*pad;             // 整条内容宽(无窗口截断,长卷比台面宽 -> 伸到框外)
@@ -381,7 +392,7 @@ function pieceLayout(piece){
   const bandTop = PAD;                    // band 垂直起点(canvas 高 = BH+2*PAD)
   const framesY = bandTop + m;
   const cw = stripW + 2*PAD, ch = BH + 2*PAD;
-  return { roll, ratio, aspect, fh, fw, g, m, BH, N, CW, pad, stripW,
+  return { roll, shots, ratio, aspect, fh, fw, g, m, BH, N, CW, pad, stripW,
            originX, bandTop, framesY, cw, ch };
 }
 
@@ -395,7 +406,7 @@ function renderPiece(piece){
   piece.el.style.width  = (L.cw*s)+'px';
   piece.el.style.height = (L.ch*s)+'px';
 
-  const { roll, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
+  const { shots, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
   const rad = Math.round(Math.min(fw,fh) * p.radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = Math.round(fh*0.05);
 
@@ -424,7 +435,7 @@ function renderPiece(piece){
 
   // 3) 逐帧:cover 裁成画幅 + 内边缘透光
   const far = L.aspect;
-  roll.shots.forEach((sh0,i)=>{
+  shots.forEach((sh0,i)=>{
     const img = sh0.img;
     if(!img.complete || !img.naturalWidth) return;
     const fx = originX + i*(fw+g);
@@ -447,6 +458,18 @@ function renderPiece(piece){
     }
     ctx.restore();
   });
+
+  // 4) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
+  if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
+    const fx = originX + selected.idx*(fw+g);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(125,170,255,.95)';
+    ctx.lineWidth = Math.max(3, Math.round(Math.min(fw,fh)*0.03));
+    ctx.setLineDash([fh*0.09, fh*0.05]);
+    rr(ctx, fx, framesY, fw, fh, rad);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function renderAllPieces(){ pieces.forEach(renderPiece); }
@@ -465,6 +488,7 @@ function applyPreset(i){
   document.querySelectorAll('.dot').forEach((d,idx)=>d.classList.toggle('on', idx===i));
   render();
   pieces.forEach(layoutPieceEl);   // 不同 preset 的 .body padding 不同 -> #screen 尺寸/位置变,需按新矩形重排
+  positionCutBtn();                // 选框/剪下按钮跟随新布局
 }
 
 // —— 轮播 ——
@@ -522,14 +546,16 @@ function centerPieceAt(piece, cx, cy){
 function raisePiece(piece){ piece.z = ++zTop; piece.el.style.zIndex = piece.z; }
 
 // —— 新建一个 piece 摆上台面 ——
-function addPiece(roll, nx, ny){
+//   shotsOverride 非空时 = 只渲染这些帧(阶段2「剪下」的单张),否则渲染整卷
+function addPiece(roll, nx, ny, shotsOverride){
   if(!roll || !roll.shots.length) return null;
   const el = document.createElement('div'); el.className = 'piece';
   const canvas = document.createElement('canvas');
   el.appendChild(canvas);
   el.insertAdjacentHTML('beforeend', '<button class="piece-del" title="移除">×</button>');
   const piece = { id:pieceSeq++, rollId:roll.id, x:nx, y:ny, z:++zTop,
-                  el, canvas, ctx:canvas.getContext('2d') };
+                  el, canvas, ctx:canvas.getContext('2d'),
+                  shots: shotsOverride || null };
   el.style.zIndex = piece.z;
   pieces.push(piece);
   $('#pieces').appendChild(el);
@@ -541,16 +567,20 @@ function addPiece(roll, nx, ny){
   return piece;
 }
 function removePiece(piece){
+  if(selected && selected.piece===piece) clearSelection();
   piece.el.remove();
   pieces = pieces.filter(p=>p!==piece);
   updatePlaceholder();
 }
 function removePiecesByRoll(rollId){
+  if(selected && String(selected.piece.rollId)===String(rollId)) clearSelection();
   pieces.filter(p=>String(p.rollId)===String(rollId)).forEach(p=>p.el.remove());
   pieces = pieces.filter(p=>String(p.rollId)!==String(rollId));
   updatePlaceholder();
 }
 function rerenderPiecesByRoll(rollId){
+  // 卷内帧数变化会改变长条几何,使选中帧索引失效 -> 先取消选区再重渲
+  if(selected && String(selected.piece.rollId)===String(rollId)) clearSelection();
   pieces.forEach(p=>{ if(String(p.rollId)===String(rollId)) renderPiece(p); });
 }
 // 多片落点层叠,避免完全重叠
@@ -575,6 +605,10 @@ function startPieceDrag(piece, e, fromTray){
 }
 window.addEventListener('pointermove', e=>{
   if(!drag) return;
+  // 一旦真正移动(>5px)即认定为拖动:取消选帧(否则浮动按钮会停在旧位置)
+  if(!drag.moved && Math.hypot(e.clientX-drag.startX, e.clientY-drag.startY)>=5){
+    drag.moved = true; clearSelection();
+  }
   const s = deckScale();
   drag.piece.x = drag.baseX + (e.clientX-drag.startX)/s;
   drag.piece.y = drag.baseY + (e.clientY-drag.startY)/s;
@@ -597,11 +631,18 @@ function endPieceDrag(e){
     } else {                                // 拖回 tray = 移除
       removePiece(d.piece); return;
     }
+  } else if(!d.fromTray && !d.moved){       // 桌上轻点(未拖动)= 选中点击处的帧
+    selectFrame(d.piece, e.clientX, e.clientY);
   }
   clampPieceToViewport(d.piece); layoutPieceEl(d.piece);
 }
 window.addEventListener('pointerup', endPieceDrag);
 window.addEventListener('pointercancel', endPieceDrag);
+// 点击 piece / 剪下按钮以外的任何地方 = 取消选帧
+window.addEventListener('pointerdown', e=>{
+  if(e.target.closest('.piece') || e.target.closest('.cut-btn')) return;
+  clearSelection();
+});
 
 // 抓 canvas 本体起拖整条;保留显式删除按钮
 function bindPieceEvents(piece){
@@ -611,6 +652,78 @@ function bindPieceEvents(piece){
   });
   const del = piece.el.querySelector('.piece-del');
   if(del) del.addEventListener('click', e=>{ e.stopPropagation(); removePiece(piece); });
+}
+
+// —— 阶段2:按帧选中 + 剪下成独立单张 ——
+// 命中检测:把视口坐标换回 piece 局部 nominal,落在哪一帧返回其索引,否则 -1
+function frameAt(piece, clientX, clientY, L){
+  L = L || pieceLayout(piece); if(!L) return -1;
+  const s = deckScale();
+  const elLeft = parseFloat(piece.el.style.left), elTop = parseFloat(piece.el.style.top);
+  const lx = (clientX - elLeft)/s, ly = (clientY - elTop)/s;
+  if(ly < L.framesY || ly > L.framesY + L.fh) return -1;
+  for(let i=0;i<L.N;i++){
+    const fx = L.originX + i*(L.fw+L.g);
+    if(lx >= fx && lx <= fx + L.fw) return i;
+  }
+  return -1;
+}
+let cutBtn = null;
+function ensureCutBtn(){
+  if(cutBtn) return cutBtn;
+  cutBtn = document.createElement('button');
+  cutBtn.className = 'cut-btn'; cutBtn.textContent = '✂ 剪下';
+  cutBtn.title = '把这一帧剪成独立单张(原长条非破坏保留)';
+  cutBtn.addEventListener('click', e=>{ e.stopPropagation(); cutSelected(); });
+  document.body.appendChild(cutBtn);
+  return cutBtn;
+}
+function positionCutBtn(){
+  if(!selected){ if(cutBtn) cutBtn.style.display='none'; return; }
+  const { piece, idx } = selected;
+  const L = pieceLayout(piece);
+  if(!L || idx>=L.N){ clearSelection(); return; }
+  const s = deckScale();
+  const elLeft = parseFloat(piece.el.style.left), elTop = parseFloat(piece.el.style.top);
+  const fx = L.originX + idx*(L.fw+L.g);
+  const b = ensureCutBtn();
+  b.style.display = '';
+  b.style.left = (elLeft + (fx + L.fw/2)*s) + 'px';
+  b.style.top  = (elTop + L.framesY*s - 8) + 'px';
+}
+function setSelection(piece, idx){
+  selected = { piece, idx };
+  renderPiece(piece);     // 画选框
+  positionCutBtn();
+}
+function clearSelection(){
+  if(!selected) return;
+  const pc = selected.piece;
+  selected = null;
+  if(cutBtn) cutBtn.style.display = 'none';
+  if(pc && pieces.includes(pc)) renderPiece(pc);   // 去掉选框
+}
+function selectFrame(piece, clientX, clientY){
+  const L = pieceLayout(piece);
+  if(!L || L.N<=1){ clearSelection(); return; }     // 单张/空卷无帧可选
+  const idx = frameAt(piece, clientX, clientY, L);
+  if(idx<0){ clearSelection(); return; }            // 点在帧外 = 取消
+  if(selected && selected.piece===piece && selected.idx===idx){ clearSelection(); return; } // 再点同帧 = 取消
+  setSelection(piece, idx);
+}
+// 剪下:复用同一帧的 shot 对象生成 N=1 piece;原长条/原卷非破坏保留该帧
+function cutSelected(){
+  if(!selected) return null;
+  const { piece, idx } = selected;
+  const roll = rollById(piece.rollId);
+  const shots = piece.shots || (roll && roll.shots);
+  if(!roll || !shots || !shots[idx]) return null;
+  const shot = shots[idx];                       // 引用同一 shot(非破坏)
+  const L = pieceLayout(piece);
+  const c = { x: piece.x + (L?L.cw*0.28:120), y: piece.y + (L?L.ch+50:120) };  // 原片右下错开落点
+  const single = addPiece(roll, c.x, c.y, [shot]);
+  clearSelection();
+  return single;
 }
 
 // —— 卷操作 ——
@@ -728,6 +841,7 @@ films.forEach((f,i)=>{
       layoutPieceEl(pc);
       pc.el.classList.remove('placing'); void pc.el.offsetWidth; pc.el.classList.add('placing');
     });
+    positionCutBtn();                    // 选框跟随新几何
   };
   filmsEl.appendChild(el);
 });
@@ -833,7 +947,7 @@ scene.addEventListener('touchend', e=>{
 });
 
 // 窗口缩放:piece 的 nominal 坐标不变,仅按新 scale 重排 CSS
-window.addEventListener('resize', ()=> pieces.forEach(layoutPieceEl));
+window.addEventListener('resize', ()=>{ pieces.forEach(layoutPieceEl); positionCutBtn(); });
 
 // 滑块
 for(const k in ui) ui[k].oninput = () => {
@@ -913,6 +1027,35 @@ if(location.search.includes('selftest')){
     const pc2 = c3.getImageData(TW/2|0, TH/2|0, 1, 1).data;
     ok('⑥框外 piece 被裁(中心回纯白底)', pc2[0]===255 && pc2[1]===255 && pc2[2]===255);
     centerPieceAt(p1, TW/2, TH/2);   // 复位
+
+    // —— 阶段2:按帧剪出单张 ——
+    const r3 = newRoll();
+    r3.shots.push({url:im.src,img:im},{url:im.src,img:im},{url:im.src,img:im});  // 3 帧长条
+    const strip = addPiece(r3, 1000, 400);
+    ok('长条 piece N=3', pieceLayout(strip).N===3);
+    setSelection(strip, 1);
+    ok('选中帧后有选区(selected 指向该 piece+帧)',
+       selected && selected.piece===strip && selected.idx===1);
+    const before = pieces.length;
+    const single = cutSelected();
+    ok('剪下生成独立单张 piece(数量+1)', pieces.length===before+1 && !!single);
+    ok('单张 = N=1 piece(shots 长度 1,复用逐帧渲染)',
+       single && single.shots && single.shots.length===1 && single.canvas.width>0);
+    ok('剪下后选区已清空', selected===null);
+    ok('非破坏:原长条仍 N=3、原卷帧数不变',
+       pieceLayout(strip).N===3 && r3.shots.length===3);
+    // 单张能进导出:摆到发光窗中心合成后非纯白底
+    centerPieceAt(single, TW/2, TH/2);
+    const ocS = document.createElement('canvas'); ocS.width=TW; ocS.height=TH;
+    const cS = ocS.getContext('2d'); cS.drawImage(bg,0,0,TW,TH);
+    cS.drawImage(single.canvas, single.x, single.y);
+    const sx = Math.round(single.x+single.canvas.width/2), sy = Math.round(single.y+single.canvas.height/2);
+    const sp = cS.getImageData(clamp(sx,0,TW-1), clamp(sy,0,TH-1), 1, 1).data;
+    ok('④单张出现在导出(非纯白底)', !(sp[0]===255 && sp[1]===255 && sp[2]===255));
+    // 清理阶段2用例,回到只剩 p1
+    removePiece(single); removePiece(strip); deleteRoll(r3);
+    centerPieceAt(p1, TW/2, TH/2);
+
     oc.toBlob(b=>{
       ok('导出 blob 非空', b && b.size>0);
       // ⑤模拟拖回 tray 移除
