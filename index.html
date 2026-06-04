@@ -456,22 +456,17 @@ function renderPiece(piece){
   const rad = Math.round(Math.min(fw,fh) * radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
 
-  // 1) 整条胶卷被背光的外侧溢光(胶片透光的体现)
-  if(glow>0){
-    ctx.save();
-    ctx.shadowColor = 'rgba(255,255,255,'+(glow/100*0.85)+')';
-    ctx.shadowBlur  = Math.round(fh*0.16);
-    ctx.fillStyle = '#fff';
-    rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.fill();
-    ctx.restore();
-  }
+  const t = glow/100;
 
-  // 2) 片基(暗色胶卷带)+ 齿孔真镂空(从片基抠穿 -> 透出底下发光台面)
+  // 1) 片基(半透明暗棕胶卷带)+ 齿孔真镂空
+  //    关键:片基不是不透明实色,而是半透明 -> 底下发光台面透上来,整片被背光照亮才有「透」感。
+  //    透光度越高,片基越透(alpha 越低),背光透得越多。
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
-  ctx.fillStyle = '#241f18';
+  const baseA = 0.9 - t*0.5;                  // glow0→0.9 几乎不透;glow40→0.7;glow100→0.4 很通透
+  ctx.fillStyle = 'rgba(38,31,23,'+baseA+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
-  // destination-out:把齿孔位置的片基像素清成透明,而不是填一块白色
+  // destination-out:把齿孔位置的片基像素清成全透明(比片基更亮的镂空)
   ctx.globalCompositeOperation = 'destination-out';
   const holeW = fh*0.10, holeH = m*0.42, holeR = holeH*0.35, step = fh*0.26;
   ctx.fillStyle = '#000';
@@ -479,9 +474,20 @@ function renderPiece(piece){
     rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
     rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
   }
+  // 片基长边:再抠一道淡淡的渐隐透光(胶片边缘最薄、透光最强)
+  if(glow>0){
+    ctx.fillStyle = '#000';
+    const edge = m*0.5;
+    let gTop = ctx.createLinearGradient(0,bandTop,0,bandTop+edge);
+    gTop.addColorStop(0,'rgba(0,0,0,'+(t*0.55)+')'); gTop.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = gTop; ctx.fillRect(bandX,bandTop,bandW,edge);
+    let gBot = ctx.createLinearGradient(0,bandTop+BH-edge,0,bandTop+BH);
+    gBot.addColorStop(0,'rgba(0,0,0,0)'); gBot.addColorStop(1,'rgba(0,0,0,'+(t*0.55)+')');
+    ctx.fillStyle = gBot; ctx.fillRect(bandX,bandTop+BH-edge,bandW,edge);
+  }
   ctx.restore();
 
-  // 3) 逐帧:cover 裁成画幅 + 内边缘透光
+  // 2) 逐帧:cover 裁成画幅 + 背光透过底片(随 glow 提亮、边缘柔光)
   const far = L.aspect;
   shots.forEach((sh0,i)=>{
     const img = sh0.img;
@@ -495,10 +501,25 @@ function renderPiece(piece){
     ctx.save();
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
+    if(glow>0){
+      // 背光透过底片:整帧轻微提亮、更通透(调透光度直接看得到变化)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(255,249,238,'+(t*0.22)+')';
+      ctx.fillRect(fx, framesY, fw, fh);
+      // 画幅内边缘:细、暖、虚的透光,不是硬白框
+      ctx.globalCompositeOperation = 'source-over';
+      const lw = Math.max(1, Math.round(Math.min(fw,fh)*0.012));
+      ctx.shadowColor = 'rgba(255,250,240,'+(0.3+t*0.5)+')';
+      ctx.shadowBlur  = Math.round(Math.min(fw,fh)*0.07);
+      ctx.lineWidth   = lw;
+      ctx.strokeStyle = 'rgba(255,250,240,'+(t*0.26)+')';
+      rr(ctx, fx+lw, framesY+lw, fw-2*lw, fh-2*lw, Math.max(0,rad-lw));
+      ctx.stroke();
+    }
     ctx.restore();
   });
 
-  // 4) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
+  // 3) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
   if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
     const fx = originX + selected.idx*(fw+g);
     ctx.save();
@@ -1029,8 +1050,44 @@ $('#gear').onclick = ()=>toggleDrawer(true);
 $('#closeDrawer').onclick = ()=>toggleDrawer(false);
 scrim.onclick = ()=>toggleDrawer(false);
 
+// —— 内置示例卷:程序化画几张「照片」,免去每次手动导入(零依赖,不引入外部图) ——
+function makeSampleShot(i){
+  const c = document.createElement('canvas'); c.width = 600; c.height = 400;
+  const x = c.getContext('2d');
+  const pal = [
+    ['#ffd89b','#ff7e5f','#3a2b3f'],                    // 暖日落
+    ['#a1c4fd','#c2e9fb','#2c5364'],                    // 清晨蓝
+    ['#f6d365','#fda085','#5b3a29'],                    // 金色田野
+    ['#84fab0','#8fd3f4','#1e3a34'],                    // 薄荷
+    ['#fccb90','#d57eeb','#2b213a'],                    // 紫粉霞
+    ['#e0c3fc','#8ec5fc','#243b55'],                    // 暮霭
+  ][i % 6];
+  const g = x.createLinearGradient(0,0,0,400);
+  g.addColorStop(0, pal[0]); g.addColorStop(.55, pal[1]); g.addColorStop(1, '#fdfaf2');
+  x.fillStyle = g; x.fillRect(0,0,600,400);
+  x.fillStyle = 'rgba(255,250,230,.9)';                 // 太阳/月
+  x.beginPath(); x.arc(120 + (i*70)%360, 140, 44, 0, 7); x.fill();
+  x.fillStyle = pal[2];                                 // 远山地平线
+  x.beginPath(); x.moveTo(0,300);
+  for(let pX=0; pX<=600; pX+=40) x.lineTo(pX, 280 + Math.sin((pX + i*50)/70)*24);
+  x.lineTo(600,400); x.lineTo(0,400); x.closePath(); x.fill();
+  return { url: c.toDataURL('image/jpeg', .85), img: new Image() };  // src 由调用方在绑 onload 后设置
+}
+function seedSampleRoll(){
+  const roll = newRoll(); roll.name = '示例卷';
+  for(let i=0;i<6;i++){
+    const s = makeSampleShot(i);
+    s.img.onload = ()=>{ rerenderPiecesByRoll(roll.id); renderTray(); };
+    s.img.src = s.url;
+    roll.shots.push(s);
+  }
+  addPiece(roll, TW/2, TH/2);     // 直接摆一条到台面中央,图片随 onload 补画
+  renderTray();
+}
+
 applyPreset(0);
 updatePlaceholder();
+if(!location.search.includes('selftest')) seedSampleRoll();   // 自检环境不预置,免得干扰断言计数
 
 // —— 页内零依赖自检:打开 index.html?selftest 自动跑,右下角浮层显示 PASS/FAIL ——
 if(location.search.includes('selftest')){
