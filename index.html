@@ -37,11 +37,8 @@
           align-items:center; justify-content:center; padding:58px 70px 112px; }
 
   /* 观片台:固定大小的实体台子 */
-  .lightbox{ position:relative; transition:transform .42s cubic-bezier(.4,0,.2,1), opacity .42s ease;
-             will-change:transform,opacity;
+  .lightbox{ position:relative;
              width:min(64vw, calc(60vh * 1.33), 820px); }
-  .lightbox.sliding-left{ transform:translateX(-34px); opacity:0; }
-  .lightbox.sliding-right{ transform:translateX(34px); opacity:0; }
 
   .body{ position:relative; border-radius:3px;
          transition:padding .3s ease, border-radius .3s ease, background .3s ease, box-shadow .3s ease; }
@@ -153,15 +150,7 @@
   .roll-add:hover{ border-color:var(--hl); color:var(--hl); }
   .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
 
-  .arrow{ position:fixed; top:50%; transform:translateY(-50%); z-index:6;
-          width:44px; height:44px; border-radius:50%; border:1px solid var(--line);
-          background:rgba(26,24,21,.6); color:var(--ink); font-size:20px; cursor:pointer;
-          backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; transition:.15s; }
-  .arrow:hover{ background:rgba(44,40,33,.85); }
-  .arrow.prev{ left:14px; }
-  .arrow.next{ right:calc(var(--tray) + 14px); }
-
-  /* 底部:胶卷规格 + 台名 + 圆点 */
+  /* 底部:胶卷规格 + 台名 */
   .dock{ position:fixed; bottom:16px; left:0; right:var(--tray); z-index:6;
          display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none; }
   .films{ display:flex; gap:7px; pointer-events:auto; }
@@ -172,9 +161,6 @@
   .film.on{ background:var(--accent); color:#211d16; border-color:var(--accent); }
   .film small{ display:block; font-size:9px; opacity:.6; }
   .deckname{ font-size:13px; letter-spacing:2px; color:#fff; opacity:.8; }
-  .dots{ display:flex; gap:9px; pointer-events:auto; }
-  .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.28); cursor:pointer; transition:.2s; }
-  .dot.on{ background:#fff; transform:scale(1.25); }
 
   .gear{ position:fixed; top:16px; left:16px; z-index:7; width:42px; height:42px;
          border-radius:50%; border:1px solid var(--line); background:rgba(26,24,21,.6);
@@ -200,9 +186,6 @@
   label.ctrl{ display:block; margin:14px 0 6px; font-size:13px; color:var(--sub); }
   label.ctrl b{ color:var(--ink); font-weight:600; float:right; }
   input[type=range]{ width:100%; accent-color:var(--accent); }
-  .swatches{ display:flex; gap:8px; margin-top:6px; }
-  .swatch{ width:26px; height:26px; border-radius:50%; border:1px solid var(--line); cursor:pointer; }
-  .swatch.on{ outline:2px solid var(--hl); outline-offset:2px; }
   .seg{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .seg button,.btn{ font:inherit; cursor:pointer; border-radius:6px; }
   .seg button{ flex:1 1 0; min-width:54px; background:transparent; color:var(--sub); border:1px solid var(--line);
@@ -230,7 +213,6 @@
     .scene{ inset:0; bottom:120px; padding:50px 14px 116px; }
     .dock{ right:0; bottom:128px; }
     .films{ flex-wrap:wrap; justify-content:center; }
-    .arrow.next{ right:14px; }
     header{ right:0; }
   }
 </style>
@@ -244,7 +226,6 @@
 <button class="gear" id="gear" title="微调">⚙</button>
 
 <div class="scene">
-  <button class="arrow prev" id="prev" aria-label="上一台">‹</button>
   <div class="lightbox" id="lightbox">
     <div class="body pro" id="bodyEl">
       <div class="screen" id="screen">
@@ -257,7 +238,6 @@
       <span class="nameplate" id="nameplate">FILMSCAN</span>
     </div>
   </div>
-  <button class="arrow next" id="next" aria-label="下一台">›</button>
 </div>
 
 <div class="pieces" id="pieces"></div>
@@ -273,7 +253,6 @@
 <div class="dock">
   <div class="films" id="films"></div>
   <div class="deckname" id="deckname">专业观片台</div>
-  <div class="dots" id="dots"></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -284,25 +263,10 @@
   <!-- 第一组:观片台(发光台面相关) -->
   <section class="group">
     <div class="group-h">观片台</div>
-    <div class="group-sub">发光台面与台框</div>
+    <div class="group-sub">专业观片台 · 背光</div>
 
-    <label class="ctrl">台框预设</label>
-    <div class="seg" id="presetSeg"></div>
-
-    <label class="ctrl">均匀度(中心热点)<b id="vUnif">0</b></label>
-    <input id="unif" type="range" min="0" max="100" value="0">
-
-    <label class="ctrl">像素网格 <b id="vPixel">0</b></label>
-    <input id="pixel" type="range" min="0" max="100" value="0">
-
-    <label class="ctrl">台面色温</label>
-    <div class="swatches" id="swatches">
-      <div class="swatch on" data-c="#ffffff" style="background:#fff"></div>
-      <div class="swatch" data-c="#f5f8ff" style="background:#f5f8ff"></div>
-      <div class="swatch" data-c="#fdf3e3" style="background:#fdf3e3"></div>
-      <div class="swatch" data-c="#f3f1ea" style="background:#f3f1ea"></div>
-      <div class="swatch" data-c="#000000" style="background:#000"></div>
-    </div>
+    <label class="ctrl">背光亮度 <b id="vGlow">40</b></label>
+    <input id="glow" type="range" min="0" max="100" value="40">
   </section>
 
   <!-- 第二组:胶片(底片本身相关) -->
@@ -312,9 +276,6 @@
 
     <label class="ctrl">画幅规格</label>
     <div class="seg" id="filmSeg"></div>
-
-    <label class="ctrl">透光感 <b id="vGlow">40</b></label>
-    <input id="glow" type="range" min="0" max="100" value="40">
 
     <label class="ctrl">底片圆角 <b id="vRadius">0</b></label>
     <input id="radius" type="range" min="0" max="60" value="0">
@@ -370,21 +331,17 @@ let filmIdx = 1;          // 默认 135
 let glow = 40;
 let radius = 0;
 
-// —— 观片台预设(发光台面本身:底色/均匀度/像素网格/机身) ——
-const presets = [
-  { name:'专业观片台', frame:'pro',     base:'#ffffff', unif:0,  pixel:0,  plate:'FILMSCAN PRO' },
-  { name:'iPad',       frame:'ipad',    base:'#f5f8ff', unif:0,  pixel:22, plate:'' },
-  { name:'暖光老灯箱', frame:'vintage', base:'#fdf3e3', unif:55, pixel:0,  plate:'LUMIBOX' },
-];
-let cur = 0;
-let p = {...presets[0]};
+// —— 观片台:硬编码单台 = 专业观片台(不再有切换/多预设) ——
+//   背光亮度(glow)只调本台面板亮度,见 renderBg;胶片像素不受其影响。
+const DECK = { name:'专业观片台', frame:'pro', base:'#ffffff', unif:0, pixel:0, plate:'FILMSCAN PRO' };
+let p = {...DECK};
 
 // 台面画布分辨率(4:3),导出尺寸
 const TW = 2000, TH = 1500;
 bg.width = TW; bg.height = TH;
 
-const ui  = { glow:$('#glow'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
-const out = { glow:$('#vGlow'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
+const ui  = { glow:$('#glow'), radius:$('#radius') };
+const out = { glow:$('#vGlow'), radius:$('#vRadius') };
 
 function rr(c,x,y,w,h,r){
   r = Math.max(0, Math.min(r, w/2, h/2));
@@ -400,36 +357,18 @@ function rr(c,x,y,w,h,r){
 // —— 发光台面层(底色/均匀度/像素网格):只随观片台预设与微调变,换照片不动 ——
 function renderBg(){
   bg.width = TW; bg.height = TH;            // 设宽即清空
-  bctx.fillStyle = p.base;
+  // 背光亮度:只调本台面板明度。低 glow -> 暗灰面板,高 glow -> 亮白面板。
+  //   胶片像素不在此处理(见 renderPieceFilm);片基半透明,压台的胶片靠合成自然透出此面板亮度。
+  const lum = Math.round(70 + (glow/100)*185);   // glow0 -> 70 暗灰,glow100 -> 255 亮白
+  bctx.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
   bctx.fillRect(0,0,TW,TH);
-
-  // 均匀度热点:整台面中心亮、四周暗
-  if(p.unif>0){
-    const a = (p.unif/100)*0.5;
-    const rg = bctx.createRadialGradient(TW/2,TH/2,Math.min(TW,TH)*0.16, TW/2,TH/2,Math.max(TW,TH)*0.62);
-    rg.addColorStop(0,'rgba(0,0,0,0)');
-    rg.addColorStop(1,'rgba(0,0,0,'+a+')');
-    bctx.fillStyle = rg; bctx.fillRect(0,0,TW,TH);
-  }
-
-  // 像素网格:整台面(屏幕栅格)
-  if(p.pixel>0){
-    const a = (p.pixel/100)*0.05;
-    const cell = Math.max(3, Math.round(TW/640));
-    const pat = document.createElement('canvas');
-    pat.width = pat.height = cell;
-    const pc = pat.getContext('2d');
-    pc.fillStyle = 'rgba(0,0,0,'+a+')';
-    pc.fillRect(0,0,cell,1); pc.fillRect(0,0,1,cell);
-    bctx.fillStyle = bctx.createPattern(pat,'repeat');
-    bctx.fillRect(0,0,TW,TH);
-  }
 }
 
 // 边框样式:旧 piece 无该字段时按 film 处理(向后兼容)
 function pieceFrameStyle(piece){ return (piece && piece.frameStyle) || 'film'; }
 
-// cover 裁切单帧画到 (fx,fy,fw,fh);lightbox=true 时叠加随 glow 的均匀背光提亮
+// cover 裁切单帧画到 (fx,fy,fw,fh)。照片是不透明乳剂,始终 WYSIWYG,背光不改其明暗。
+//   (lightbox 形参保留以兼容既有调用点,不再用于提亮)
 function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
   if(!img || !img.complete || !img.naturalWidth) return;
   const iw = img.naturalWidth, ih = img.naturalHeight, ia = iw/ih;
@@ -439,11 +378,6 @@ function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
   ctx.save();
   rr(ctx, fx, fy, fw, fh, rad); ctx.clip();
   ctx.drawImage(img, sx,sy,sw,sh, fx, fy, fw, fh);
-  if(lightbox && glow>0){
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,249,238,'+((glow/100)*0.22)+')';
-    ctx.fillRect(fx, fy, fw, fh);
-  }
   ctx.restore();
 }
 
@@ -538,17 +472,17 @@ function renderPieceFilm(piece){
   const rad = Math.round(Math.min(fw,fh) * radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
 
-  const t = glow/100;
-
-  // 1) 片基(半透明暗棕胶卷带)+ 齿孔真镂空
-  //    关键:片基不是不透明实色,而是半透明 -> 底下发光台面透上来,整片被背光照亮才有「透」感。
-  //    透光度越高,片基越透(alpha 越低),背光透得越多。
+  // 1) 片基(恒定半透明暗棕胶卷带)+ 齿孔真镂空
+  //    关键:片基 alpha 固定半透明,不随任何滑杆变。底下是什么就透出什么:
+  //      压在观片台上 -> 透出被背光照亮的面板(亮);摆到台外桌面 -> 透出暗桌面(暗)。
+  //    于是「台外胶片不被背光提亮」靠合成自然成立,无需位置判断。
+  const BASE_ALPHA = 0.55;                    // 恒定半透明常量
+  const EDGE_ALPHA = 0.3;                     // 长边渐隐透光,同样恒定
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
-  const baseA = 0.9 - t*0.5;                  // glow0→0.9 几乎不透;glow40→0.7;glow100→0.4 很通透
-  ctx.fillStyle = 'rgba(38,31,23,'+baseA+')';
+  ctx.fillStyle = 'rgba(38,31,23,'+BASE_ALPHA+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
-  // destination-out:把齿孔位置的片基像素清成全透明(比片基更亮的镂空)
+  // destination-out:把齿孔位置的片基像素清成全透明(真镂空)
   ctx.globalCompositeOperation = 'destination-out';
   const holeW = fh*0.10, holeH = m*0.42, holeR = holeH*0.35, step = fh*0.26;
   ctx.fillStyle = '#000';
@@ -556,20 +490,19 @@ function renderPieceFilm(piece){
     rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
     rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
   }
-  // 片基长边:再抠一道淡淡的渐隐透光(胶片边缘最薄、透光最强)
-  if(glow>0){
-    ctx.fillStyle = '#000';
+  // 片基长边:恒定的淡渐隐(胶片边缘最薄)——固定值,不随背光变
+  {
     const edge = m*0.5;
     let gTop = ctx.createLinearGradient(0,bandTop,0,bandTop+edge);
-    gTop.addColorStop(0,'rgba(0,0,0,'+(t*0.55)+')'); gTop.addColorStop(1,'rgba(0,0,0,0)');
+    gTop.addColorStop(0,'rgba(0,0,0,'+EDGE_ALPHA+')'); gTop.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle = gTop; ctx.fillRect(bandX,bandTop,bandW,edge);
     let gBot = ctx.createLinearGradient(0,bandTop+BH-edge,0,bandTop+BH);
-    gBot.addColorStop(0,'rgba(0,0,0,0)'); gBot.addColorStop(1,'rgba(0,0,0,'+(t*0.55)+')');
+    gBot.addColorStop(0,'rgba(0,0,0,0)'); gBot.addColorStop(1,'rgba(0,0,0,'+EDGE_ALPHA+')');
     ctx.fillStyle = gBot; ctx.fillRect(bandX,bandTop+BH-edge,bandW,edge);
   }
   ctx.restore();
 
-  // 2) 逐帧:cover 裁成画幅 + 背光透过底片(随 glow 提亮、边缘柔光)
+  // 2) 逐帧:cover 裁成画幅。照片是不透明乳剂,WYSIWYG,背光不改其像素明暗。
   const far = L.aspect;
   shots.forEach((sh0,i)=>{
     const img = sh0.img;
@@ -583,13 +516,6 @@ function renderPieceFilm(piece){
     ctx.save();
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
-    if(glow>0){
-      // 背光透过底片:整帧均匀提亮、更通透(调透光度直接看得到变化)。
-      // 真实灯箱透光是整片被背光照亮,画幅内不该出现一圈白边 -> 只做均匀提亮,不再描内边框。
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = 'rgba(255,249,238,'+(t*0.22)+')';
-      ctx.fillRect(fx, framesY, fw, fh);
-    }
     ctx.restore();
   });
 
@@ -609,44 +535,17 @@ function renderPieceFilm(piece){
 function renderAllPieces(){ pieces.forEach(renderPiece); }
 function render(){ renderBg(); renderAllPieces(); }   // 全局外观变化时
 
-function applyPreset(i){
-  cur = i;
-  p = {...presets[i]};
-  ui.unif.value = p.unif; ui.pixel.value = p.pixel;   // glow/radius 属胶片,不随换台子重置
-  syncLabels();
-  document.querySelectorAll('.swatch').forEach(s=>
-    s.classList.toggle('on', s.dataset.c.toLowerCase()===p.base.toLowerCase()));
+// —— 硬编码单台:套用专业观片台的机身/铭牌/台名,并渲染 ——
+function applyDeck(){
+  p = {...DECK};
   $('#bodyEl').className = 'body ' + p.frame;
   $('#nameplate').textContent = p.plate || '';
   $('#deckname').textContent = p.name;
-  document.querySelectorAll('.dot').forEach((d,idx)=>d.classList.toggle('on', idx===i));
-  document.querySelectorAll('#presetSeg button').forEach((b,idx)=>b.classList.toggle('on', idx===i));
   render();
-  pieces.forEach(layoutPieceEl);   // 不同 preset 的 .body padding 不同 -> #screen 尺寸/位置变,需按新矩形重排
-  positionCutBtn();                // 选框/剪下按钮跟随新布局
-  positionFrameBar();              // 边框工具条跟随新布局
+  pieces.forEach(layoutPieceEl);
+  positionCutBtn();
+  positionFrameBar();
 }
-
-// —— 轮播 ——
-let animating = false;
-function go(dir){
-  if(animating) return;
-  animating = true;
-  const lb = $('#lightbox');
-  const next = (cur + dir + presets.length) % presets.length;
-  lb.classList.add(dir>0 ? 'sliding-left' : 'sliding-right');
-  setTimeout(()=>{
-    applyPreset(next);
-    lb.style.transition = 'none';
-    lb.classList.remove('sliding-left','sliding-right');
-    lb.classList.add(dir>0 ? 'sliding-right' : 'sliding-left');
-    void lb.offsetWidth;
-    lb.style.transition = '';
-    lb.classList.remove('sliding-left','sliding-right');
-    setTimeout(()=>animating=false, 430);
-  }, 420);
-}
-function jump(i){ if(!animating && i!==cur) go(i>cur ? 1 : -1); }
 
 // —— 台面占位/保存按钮状态 ——
 function updatePlaceholder(){
@@ -1013,8 +912,6 @@ function save(){
 
 function syncLabels(){
   out.glow.textContent   = ui.glow.value;
-  out.unif.textContent   = ui.unif.value;
-  out.pixel.textContent  = ui.pixel.value;
   out.radius.textContent = ui.radius.value;
 }
 
@@ -1044,21 +941,6 @@ films.forEach((f,i)=>{
   btn.innerHTML = `${f.name}<small>${f.desc}</small>`;
   btn.onclick = ()=>selectFilm(i);
   filmSeg.appendChild(btn);
-});
-
-// —— 台框预设:底部圆点与抽屉「观片台」组 seg 共用轮播 jump、由 applyPreset 同步高亮 ——
-const dots = $('#dots'), presetSeg = $('#presetSeg');
-presets.forEach((ps,i)=>{
-  const d = document.createElement('div');
-  d.className = 'dot' + (i===0?' on':'');
-  d.title = ps.name; d.onclick = ()=>jump(i);
-  dots.appendChild(d);
-
-  const btn = document.createElement('button');
-  if(i===0) btn.className = 'on';
-  btn.textContent = ps.name;
-  btn.onclick = ()=>jump(i);
-  presetSeg.appendChild(btn);
 });
 
 // —— 导入入口 ——
@@ -1135,37 +1017,14 @@ tray.addEventListener('drop', e=>{
   if(e.dataTransfer.files.length && !e.target.closest('.roll')){ e.preventDefault(); addFiles(e.dataTransfer.files); }
 });
 
-// 轮播交互
-$('#prev').onclick = ()=>go(-1);
-$('#next').onclick = ()=>go(1);
-window.addEventListener('keydown', e=>{
-  if(e.key==='ArrowLeft') go(-1);
-  if(e.key==='ArrowRight') go(1);
-});
-let tx=null, txOnPiece=false;
-const scene = $('.scene');
-scene.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; txOnPiece=!!e.target.closest('.piece'); }, {passive:true});
-scene.addEventListener('touchend', e=>{
-  if(tx===null) return;
-  const dx = e.changedTouches[0].clientX - tx;
-  if(!txOnPiece && Math.abs(dx)>50) go(dx<0 ? 1 : -1);   // 命中 piece 则交给 piece 处理,不切台
-  tx=null;
-});
-
 // 窗口缩放:piece 的 nominal 坐标不变,仅按新 scale 重排 CSS
 window.addEventListener('resize', ()=>{ pieces.forEach(layoutPieceEl); positionCutBtn(); positionFrameBar(); });
 
 // 滑块
 for(const k in ui) ui[k].oninput = () => {
-  glow=+ui.glow.value; radius=+ui.radius.value;        // 胶片属性
-  p.unif=+ui.unif.value; p.pixel=+ui.pixel.value;      // 观片台属性
+  glow=+ui.glow.value;        // 背光亮度(只调观片台面板,见 renderBg)
+  radius=+ui.radius.value;    // 底片圆角(胶片属性)
   syncLabels(); render();
-};
-$('#swatches').onclick = e => {
-  if(!e.target.dataset.c) return;
-  p.base = e.target.dataset.c;
-  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('on'));
-  e.target.classList.add('on'); render();
 };
 $('#fmt').onclick = e => {
   if(!e.target.dataset.f) return;
@@ -1201,7 +1060,7 @@ function seedSampleRoll(){
   renderTray();
 }
 
-applyPreset(0);
+applyDeck();
 updatePlaceholder();
 if(!location.search.includes('selftest')) seedSampleRoll();   // 自检环境不预置,免得干扰断言计数
 
@@ -1252,7 +1111,9 @@ if(location.search.includes('selftest')){
     c3.drawImage(bg,0,0,TW,TH);
     pieces.forEach(pc=>c3.drawImage(pc.canvas, pc.x, pc.y));
     const pc2 = c3.getImageData(TW/2|0, TH/2|0, 1, 1).data;
-    ok('⑥框外 piece 被裁(中心回纯白底)', pc2[0]===255 && pc2[1]===255 && pc2[2]===255);
+    // 面板亮度现随背光(glow)变,不再恒为纯白 -> 与台面底色(bg 同点)逐通道比对
+    const bgC = bctx.getImageData(TW/2|0, TH/2|0, 1, 1).data;
+    ok('⑥框外 piece 被裁(中心回台面底色)', pc2[0]===bgC[0] && pc2[1]===bgC[1] && pc2[2]===bgC[2]);
     centerPieceAt(p1, TW/2, TH/2);   // 复位
 
     // —— 阶段2:按帧剪出单张 ——
