@@ -9,3 +9,6 @@
 *.tmp
 filmscan.jpg
 filmscan.png
+
+# 示例卷照片(本地私人实拍,不入库;index.html 的 SAMPLE_IMAGES 引用 images/ 下文件)
+images/
