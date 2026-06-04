@@ -11,4 +11,9 @@ filmscan.jpg
 filmscan.png
 
 # 示例卷照片(本地私人实拍,不入库;index.html 的 SAMPLE_IMAGES 引用 images/ 下文件)
-images/
+# Vite 迁移后挪到 public/images/(同源 serve 到根 /images),仍不入库
+public/images/
+
+# Node / Vite 构建
+node_modules/
+dist/
