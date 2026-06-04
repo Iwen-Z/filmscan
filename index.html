@@ -62,9 +62,25 @@
   .nameplate{ position:absolute; bottom:1.5%; left:50%; transform:translateX(-50%);
               font-size:10px; letter-spacing:2px; opacity:.5; pointer-events:none; color:#555; }
 
-  /* 台面画布:铺满 screen */
-  canvas{ display:none; width:100%; height:100%; object-fit:contain; }
-  canvas.placing{ animation:slideUp .5s cubic-bezier(.2,.7,.2,1); }
+  /* 台面背景:发光台面常亮(bg),其上叠 pieces 图层 */
+  #bg{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .pieces{ position:absolute; inset:0; pointer-events:none; }     /* 容器不挡台面拖放 */
+  .piece{ position:absolute; pointer-events:auto; touch-action:none;
+          cursor:default; will-change:left,top; }
+  .piece canvas{ display:block; width:100%; height:100%; }
+  .piece.placing{ animation:slideUp .5s cubic-bezier(.2,.7,.2,1); }
+  .piece.dragging{ cursor:grabbing; }
+  .piece-grip{ position:absolute; left:4px; top:4px; width:22px; height:22px;
+               border-radius:6px; background:rgba(20,20,24,.72); color:#fff;
+               font-size:13px; line-height:22px; text-align:center; cursor:grab;
+               opacity:0; transition:.15s; backdrop-filter:blur(4px); }
+  .piece:hover .piece-grip{ opacity:.9; }
+  .piece-grip:active{ cursor:grabbing; }
+  .piece-del{ position:absolute; right:4px; top:4px; width:20px; height:20px;
+              border-radius:50%; border:none; background:rgba(0,0,0,.6); color:#fff;
+              font-size:12px; line-height:20px; text-align:center; cursor:pointer;
+              opacity:0; transition:.15s; padding:0; }
+  .piece:hover .piece-del{ opacity:1; }
   @keyframes slideUp{ from{ transform:translateY(6%); opacity:0; } to{ transform:none; opacity:1; } }
 
   .placeholder{ position:absolute; inset:0; display:flex; flex-direction:column;
@@ -72,27 +88,44 @@
                 color:var(--sub); font-size:13px; text-align:center; cursor:pointer; line-height:1.7; }
   .placeholder b{ font-size:15px; color:inherit; opacity:.9; }
 
-  /* 右侧照片候选区 */
+  /* 右侧:按「卷」分组的胶卷候选区 */
   .tray{ position:fixed; top:0; right:0; bottom:0; width:var(--tray); z-index:6;
          background:rgba(20,20,24,.66); backdrop-filter:blur(10px);
          border-left:1px solid var(--line); display:flex; flex-direction:column; padding:14px 0; }
-  .tray .add{ flex:0 0 auto; margin:0 14px 12px; padding:14px 0; cursor:pointer;
-              border:1.5px dashed var(--line); border-radius:10px; text-align:center;
-              color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
-  .tray .add:hover, .tray.drag-on .add{ border-color:#7d96ff; color:#cdd6ff; }
-  .tray .add b{ display:block; font-size:20px; font-weight:400; color:inherit; }
-  .thumbs{ flex:1 1 auto; overflow-y:auto; padding:0 14px 8px;
-           display:flex; flex-direction:column; gap:10px; }
-  .thumb{ position:relative; border-radius:8px; overflow:hidden; cursor:grab;
-          border:2px solid transparent; aspect-ratio:1; background:#000;
-          transition:border-color .15s; }
+  .newroll{ flex:0 0 auto; margin:0 14px 12px; padding:12px 0; cursor:pointer;
+            border:1.5px dashed var(--line); border-radius:10px; text-align:center;
+            color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
+  .newroll:hover, .tray.drag-on .newroll{ border-color:#7d96ff; color:#cdd6ff; }
+  .newroll b{ display:block; font-size:20px; font-weight:400; color:inherit; }
+  .rolls{ flex:1 1 auto; overflow-y:auto; padding:0 10px 8px;
+          display:flex; flex-direction:column; gap:12px; }
+  .roll{ border:1px solid var(--line); border-radius:10px; padding:8px; transition:.15s;
+         background:rgba(255,255,255,.02); }
+  .roll.on{ border-color:rgba(125,150,255,.7); background:rgba(125,150,255,.08); }
+  .roll.drop-on{ border-color:#7d96ff; background:rgba(125,150,255,.14); }
+  .roll-h{ display:flex; align-items:center; gap:6px; cursor:grab; margin-bottom:8px;
+           padding:2px 2px 6px; border-bottom:1px solid var(--line); }
+  .roll-h:active{ cursor:grabbing; }
+  .roll-name{ font-size:12px; color:var(--ink); font-weight:600; flex:1 1 auto;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .roll-count{ font-size:10px; color:var(--sub); background:rgba(255,255,255,.08);
+               border-radius:8px; padding:1px 6px; }
+  .roll-del{ background:none; border:none; color:var(--sub); font-size:15px; line-height:1;
+             cursor:pointer; padding:0 2px; opacity:.5; }
+  .roll-del:hover{ opacity:1; color:#ff8a8a; }
+  .roll-thumbs{ display:flex; flex-direction:column; gap:8px; }
+  .thumb{ position:relative; border-radius:7px; overflow:hidden; cursor:grab;
+          border:2px solid transparent; aspect-ratio:1; background:#000; transition:border-color .15s; }
   .thumb:active{ cursor:grabbing; }
   .thumb img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
-  .thumb.on{ border-color:#fff; }
   .thumb .del{ position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%;
                background:rgba(0,0,0,.6); color:#fff; border:none; font-size:12px; line-height:18px;
                cursor:pointer; opacity:0; transition:.15s; padding:0; }
   .thumb:hover .del{ opacity:1; }
+  .roll-add{ aspect-ratio:3/1; border:1.5px dashed var(--line); border-radius:7px; cursor:pointer;
+             display:flex; align-items:center; justify-content:center; color:var(--sub);
+             font-size:16px; transition:.15s; }
+  .roll-add:hover{ border-color:#7d96ff; color:#cdd6ff; }
   .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
 
   .arrow{ position:fixed; top:50%; transform:translateY(-50%); z-index:6;
@@ -151,15 +184,19 @@
 
   @media(max-width:680px){
     :root{ --tray:0px; }
-    .tray{ top:auto; left:0; right:0; bottom:0; width:auto; height:92px; flex-direction:row;
+    .tray{ top:auto; left:0; right:0; bottom:0; width:auto; height:120px; flex-direction:row;
            border-left:none; border-top:1px solid var(--line); padding:10px 12px; align-items:center; }
-    .tray .add{ margin:0 10px 0 0; width:62px; height:100%; padding:0;
-                display:flex; flex-direction:column; align-items:center; justify-content:center; }
-    .thumbs{ flex-direction:row; overflow-x:auto; overflow-y:hidden; padding:0; height:100%; }
-    .thumb{ height:100%; aspect-ratio:1; flex:0 0 auto; }
+    .newroll{ margin:0 10px 0 0; width:60px; height:100%; padding:0;
+              display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .rolls{ flex-direction:row; overflow-x:auto; overflow-y:hidden; padding:0; height:100%; gap:8px; }
+    .roll{ flex:0 0 auto; height:100%; display:flex; flex-direction:column; padding:6px; }
+    .roll-h{ margin-bottom:4px; padding:0 0 4px; }
+    .roll-thumbs{ flex-direction:row; flex:1 1 auto; overflow-x:auto; overflow-y:hidden; gap:6px; }
+    .thumb{ height:100%; width:auto; aspect-ratio:1; flex:0 0 auto; }
+    .roll-add{ aspect-ratio:1; height:100%; width:auto; }
     .tray .empty{ margin:0; }
-    .scene{ inset:0; bottom:92px; padding:50px 14px 116px; }
-    .dock{ right:0; bottom:100px; }
+    .scene{ inset:0; bottom:120px; padding:50px 14px 116px; }
+    .dock{ right:0; bottom:128px; }
     .films{ flex-wrap:wrap; justify-content:center; }
     .arrow.next{ right:14px; }
     header{ right:0; }
@@ -169,7 +206,7 @@
 <body>
 <header>
   <h1>观 片 台</h1>
-  <p>把右侧照片拖到台面上 · 选胶卷规格 · 切换观片台</p>
+  <p>新建卷 · 把照片拖进卷里 · 把整卷拖上台面</p>
 </header>
 
 <button class="gear" id="gear" title="微调">⚙</button>
@@ -179,10 +216,11 @@
   <div class="lightbox" id="lightbox">
     <div class="body pro" id="bodyEl">
       <div class="screen" id="screen">
-        <canvas id="cv"></canvas>
+        <canvas id="bg"></canvas>
+        <div class="pieces" id="pieces"></div>
         <div class="placeholder" id="placeholder">
-          <b>把底片放上台面</b>
-          从右侧拖一张过来<br>或点这里导入
+          <b>把胶卷放上台面</b>
+          从右侧拖一卷过来<br>或点这里新建并导入
         </div>
       </div>
       <span class="nameplate" id="nameplate">FILMSCAN</span>
@@ -192,9 +230,9 @@
 </div>
 
 <aside class="tray" id="tray">
-  <div class="add" id="add"><b>＋</b>选照片</div>
-  <div class="thumbs" id="thumbs">
-    <div class="empty" id="trayEmpty">还没有照片<br>点上方导入</div>
+  <div class="newroll" id="newRoll"><b>＋</b>新建卷</div>
+  <div class="rolls" id="rolls">
+    <div class="empty" id="trayEmpty">还没有胶卷<br>点上方新建一卷</div>
   </div>
 </aside>
 <input id="file" type="file" accept="image/*" multiple hidden>
@@ -243,19 +281,30 @@
 
 <script>
 const $ = s => document.querySelector(s);
-const cv = $('#cv'), ctx = cv.getContext('2d');
+const bg = $('#bg'), bctx = bg.getContext('2d');
 let fmt = 'jpg';
 
-// —— 候选照片 ——
-let shots = [];          // { url, img }
-let activeImg = null;
+// —— 胶卷:每卷一组照片 ——
+let rolls = [];          // [{ id, name, shots:[{url,img}] }]
+let nextId = 1;
+let importTarget = null; // 下一次导入的目标卷(点某卷的「＋」时设置)
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const rollById = id => rolls.find(r => String(r.id) === String(id));
 
-// —— 胶卷规格:ratio = 底片长边占台面对应边的比例(越小底片越小、台面留白越多) ——
+// —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——
+let pieces = [];         // [{ id, rollId, x, y, z, panX, el, canvas, ctx }]
+let pieceSeq = 1;
+let zTop = 0;
+const deckScale = () => screen.clientWidth / TW;   // nominal px -> CSS px
+
+// —— 胶卷规格 ——
+//   ratio  = 底片长边占台面对应边的比例(越小底片越小、台面留白越多)
+//   aspect = 画幅长短边比(>=1);照片会被 cover 裁成这个比例,横竖跟随照片方向
 const films = [
-  { name:'110',  desc:'微型', ratio:0.26 },
-  { name:'135',  desc:'35mm', ratio:0.40 },
-  { name:'120',  desc:'6×6',  ratio:0.58 },
-  { name:'4×5',  desc:'大画幅', ratio:0.78 },
+  { name:'110',  desc:'微型', ratio:0.26, aspect:17/13 },  // 13×17mm
+  { name:'135',  desc:'35mm', ratio:0.40, aspect:3/2 },    // 24×36mm
+  { name:'120',  desc:'6×6',  ratio:0.58, aspect:1 },      // 正方
+  { name:'4×5',  desc:'大画幅', ratio:0.78, aspect:5/4 },   // 4×5 inch
 ];
 let filmIdx = 1;          // 默认 135
 
@@ -270,65 +319,38 @@ let p = {...presets[0]};
 
 // 台面画布分辨率(4:3),导出尺寸
 const TW = 2000, TH = 1500;
+bg.width = TW; bg.height = TH;
 
 const ui  = { glow:$('#glow'), unif:$('#unif'), pixel:$('#pixel'), radius:$('#radius') };
 const out = { glow:$('#vGlow'), unif:$('#vUnif'), pixel:$('#vPixel'), radius:$('#vRadius') };
 
-function rr(x,y,w,h,r){
-  r = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
+function rr(c,x,y,w,h,r){
+  r = Math.max(0, Math.min(r, w/2, h/2));
+  c.beginPath();
+  c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r);
+  c.arcTo(x,y,x+w,y,r);
+  c.closePath();
 }
 
-// —— 渲染整张台面 + 居中底片 ——
-function render(){
-  if(!activeImg) return;
-  const img = activeImg;
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  cv.width = TW; cv.height = TH;
+// —— 发光台面层(底色/均匀度/像素网格):只随观片台预设与微调变,换照片不动 ——
+function renderBg(){
+  bg.width = TW; bg.height = TH;            // 设宽即清空
+  bctx.fillStyle = p.base;
+  bctx.fillRect(0,0,TW,TH);
 
-  // 1) 发光台面底色(色温)
-  ctx.fillStyle = p.base;
-  ctx.fillRect(0,0,TW,TH);
-
-  // 2) 底片大小:按胶卷规格 contain 进 (TW*ratio × TH*ratio) 框
-  const ratio = films[filmIdx].ratio;
-  const s = Math.min(TW*ratio/iw, TH*ratio/ih);
-  const dw = iw*s, dh = ih*s;
-  const dx = (TW-dw)/2, dy = (TH-dh)/2;
-  const rad = Math.round(Math.min(dw,dh) * p.radius/100/2);
-
-  // 3) 底片边缘透光溢光(台面光从底片四周透出的过曝白晕)
-  if(p.glow>0){
-    ctx.save();
-    ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.9)+')';
-    ctx.shadowBlur  = Math.round(Math.min(dw,dh)*0.12);
-    ctx.fillStyle = '#fff';
-    if(rad>0){ rr(dx,dy,dw,dh,rad); ctx.fill(); } else ctx.fillRect(dx,dy,dw,dh);
-    ctx.restore();
-  }
-
-  // 4) 底片
-  ctx.save();
-  if(rad>0){ rr(dx,dy,dw,dh,rad); ctx.clip(); }
-  ctx.drawImage(img, dx,dy,dw,dh);
-  ctx.restore();
-
-  // 5) 均匀度热点:整台面中心亮、四周暗
+  // 均匀度热点:整台面中心亮、四周暗
   if(p.unif>0){
     const a = (p.unif/100)*0.5;
-    const rg = ctx.createRadialGradient(TW/2,TH/2,Math.min(TW,TH)*0.16, TW/2,TH/2,Math.max(TW,TH)*0.62);
+    const rg = bctx.createRadialGradient(TW/2,TH/2,Math.min(TW,TH)*0.16, TW/2,TH/2,Math.max(TW,TH)*0.62);
     rg.addColorStop(0,'rgba(0,0,0,0)');
     rg.addColorStop(1,'rgba(0,0,0,'+a+')');
-    ctx.fillStyle = rg; ctx.fillRect(0,0,TW,TH);
+    bctx.fillStyle = rg; bctx.fillRect(0,0,TW,TH);
   }
 
-  // 6) 像素网格:整台面(屏幕栅格)
+  // 像素网格:整台面(屏幕栅格)
   if(p.pixel>0){
     const a = (p.pixel/100)*0.05;
     const cell = Math.max(3, Math.round(TW/640));
@@ -337,10 +359,107 @@ function render(){
     const pc = pat.getContext('2d');
     pc.fillStyle = 'rgba(0,0,0,'+a+')';
     pc.fillRect(0,0,cell,1); pc.fillRect(0,0,1,cell);
-    ctx.fillStyle = ctx.createPattern(pat,'repeat');
-    ctx.fillRect(0,0,TW,TH);
+    bctx.fillStyle = bctx.createPattern(pat,'repeat');
+    bctx.fillRect(0,0,TW,TH);
   }
 }
+
+// —— 胶卷条几何:把某个 piece 所属卷的若干帧横排在该 piece 的局部画布上 ——
+//   坐标全部在该 piece 的 canvas 局部坐标系,band 整体偏移 PAD(给 glow 留边)
+function pieceLayout(piece){
+  const roll = rollById(piece.rollId);
+  if(!roll || !roll.shots.length) return null;
+  const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
+  const fh = TH * (0.32 + ratio*0.40);   // 帧高随规格变,留出多帧空间
+  const fw = fh * aspect;                // 横画幅(长边在水平方向)
+  const g  = fh * 0.10;                  // 帧间片基
+  const m  = fh * 0.16;                  // 上下片基/齿孔区
+  const BH = fh + 2*m;                    // 胶卷带高
+  const N  = roll.shots.length;
+  const CW = N*fw + (N-1)*g;              // 所有帧内容宽
+  const pad = TW * 0.06;                  // 胶卷两端片头
+  const stripW = CW + 2*pad;
+  const WW = Math.min(stripW, TW);        // 窗口宽:窄于台面则整条入窗,否则截到台面宽
+  const maxPan = Math.max(0, stripW - WW);
+  piece.panX = clamp(piece.panX, 0, maxPan);
+  // 四周留白:必须 >= 外侧 glow 的 shadowBlur(fh*0.16),否则溢光被 canvas 边裁切
+  const PAD = Math.ceil(fh*0.22);
+  // band 在窗口内的起点(再整体 +PAD 进入 canvas 局部坐标)
+  const winOriginX = stripW <= WW ? (WW-CW)/2 : pad - piece.panX;
+  const originX = winOriginX + PAD;
+  const bandTop = PAD;                          // band 垂直起点(canvas 高 = BH+2*PAD)
+  const framesY = bandTop + m;
+  const cw = WW + 2*PAD, ch = BH + 2*PAD;
+  return { roll, ratio, aspect, fh, fw, g, m, BH, N, CW, pad, stripW, WW,
+           maxPan, originX, bandTop, framesY, cw, ch };
+}
+
+// —— 渲染单个 piece 的 canvas:片基 + 齿孔 + 逐帧裁切 + 透光 ——
+function renderPiece(piece){
+  const L = pieceLayout(piece);
+  if(!L){ return; }
+  const ctx = piece.ctx;
+  piece.canvas.width = L.cw; piece.canvas.height = L.ch;   // 设宽即清空(透明底)
+  const s = deckScale();
+  piece.el.style.width  = (L.cw*s)+'px';
+  piece.el.style.height = (L.ch*s)+'px';
+
+  const { roll, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
+  const rad = Math.round(Math.min(fw,fh) * p.radius/100/2);
+  const bandX = originX - g, bandW = CW + 2*g, bandR = Math.round(fh*0.05);
+
+  // 1) 整条胶卷被背光的外侧溢光
+  if(p.glow>0){
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.85)+')';
+    ctx.shadowBlur  = Math.round(fh*0.16);
+    ctx.fillStyle = '#fff';
+    rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.fill();
+    ctx.restore();
+  }
+
+  // 2) 片基(暗色胶卷带)+ 齿孔(台面光透过)
+  ctx.save();
+  rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
+  ctx.fillStyle = '#241f18';
+  ctx.fillRect(bandX, bandTop, bandW, BH);
+  const holeW = fh*0.10, holeH = m*0.42, holeR = holeH*0.35, step = fh*0.26;
+  ctx.fillStyle = p.base;
+  for(let x = bandX + step*0.4; x < bandX + bandW - holeW; x += step){
+    rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
+    rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
+  }
+  ctx.restore();
+
+  // 3) 逐帧:cover 裁成画幅 + 内边缘透光
+  const far = L.aspect;
+  roll.shots.forEach((sh0,i)=>{
+    const img = sh0.img;
+    if(!img.complete || !img.naturalWidth) return;
+    const fx = originX + i*(fw+g);
+    if(fx+fw < -60 || fx > L.cw+60) return;        // 视野外跳过
+    const iw = img.naturalWidth, ih = img.naturalHeight, ia = iw/ih;
+    let sx,sy,sw,sh;
+    if(ia > far){ sh = ih; sw = ih*far; sx = (iw-sw)/2; sy = 0; }
+    else        { sw = iw; sh = iw/far; sx = 0; sy = (ih-sh)/2; }
+    ctx.save();
+    rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
+    ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
+    if(p.glow>0){
+      const lw = Math.max(2, Math.round(Math.min(fw,fh)*0.04));
+      ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.8)+')';
+      ctx.shadowBlur  = Math.round(Math.min(fw,fh)*0.10);
+      ctx.lineWidth   = lw;
+      ctx.strokeStyle = 'rgba(255,255,255,'+(0.30+p.glow/100*0.4)+')';
+      rr(ctx, fx+lw/2, framesY+lw/2, fw-lw, fh-lw, Math.max(0,rad-lw/2));
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+function renderAllPieces(){ pieces.forEach(renderPiece); }
+function render(){ renderBg(); renderAllPieces(); }   // 全局外观变化时
 
 function applyPreset(i){
   cur = i;
@@ -377,53 +496,219 @@ function go(dir){
 }
 function jump(i){ if(!animating && i!==cur) go(i>cur ? 1 : -1); }
 
-// —— 放底片上台面(滑入动画) ——
-function place(img){
-  activeImg = img;
-  $('#placeholder').style.display='none';
-  cv.style.display='block';
-  $('#save').disabled=false;
-  render();
-  cv.classList.remove('placing'); void cv.offsetWidth; cv.classList.add('placing');
-  document.querySelectorAll('.thumb').forEach(t=>
-    t.classList.toggle('on', shots[+t.dataset.i] && shots[+t.dataset.i].img===img));
+// —— 台面占位/保存按钮状态 ——
+function updatePlaceholder(){
+  $('#placeholder').style.display = pieces.length ? 'none' : '';
+  $('#save').disabled = !pieces.length;
 }
 
-// —— 候选区 ——
-function addFiles(list){
+// —— piece 的 CSS 布局(nominal -> CSS px,跟随台面缩放) ——
+function layoutPieceEl(piece){
+  const s = deckScale();
+  piece.el.style.left   = (piece.x*s)+'px';
+  piece.el.style.top    = (piece.y*s)+'px';
+  piece.el.style.width  = (piece.canvas.width*s)+'px';
+  piece.el.style.height = (piece.canvas.height*s)+'px';
+}
+// 把 piece 中心摆到 nominal 落点(cx,cy),并松散 clamp 防止整片拖出不可见
+function centerPieceAt(piece, cx, cy){
+  let x = cx - piece.canvas.width/2;
+  let y = cy - piece.canvas.height/2;
+  const margin = 60;   // 至少这么多 nominal px 留在台面内
+  x = clamp(x, -piece.canvas.width + margin, TW - margin);
+  y = clamp(y, -piece.canvas.height + margin, TH - margin);
+  piece.x = x; piece.y = y;
+  layoutPieceEl(piece);
+}
+function raisePiece(piece){ piece.z = ++zTop; piece.el.style.zIndex = piece.z; }
+
+// 把某帧滚到 piece 视窗中央(片内平移)
+function panPieceToFrame(piece, i){
+  const L = pieceLayout(piece); if(!L || L.maxPan<=0) return;
+  piece.panX = clamp(L.pad + i*(L.fw+L.g) + L.fw/2 - L.WW/2, 0, L.maxPan);
+  renderPiece(piece);
+}
+
+// —— 新建一个 piece 摆上台面 ——
+function addPiece(roll, nx, ny, panToIdx){
+  if(!roll || !roll.shots.length) return null;
+  const el = document.createElement('div'); el.className = 'piece';
+  const canvas = document.createElement('canvas');
+  el.appendChild(canvas);
+  el.insertAdjacentHTML('beforeend',
+    '<div class="piece-grip" title="拖动整片">⠿</div>'+
+    '<button class="piece-del" title="移除">×</button>');
+  const piece = { id:pieceSeq++, rollId:roll.id, x:nx, y:ny, z:++zTop, panX:0,
+                  el, canvas, ctx:canvas.getContext('2d') };
+  el.style.zIndex = piece.z;
+  pieces.push(piece);
+  $('#pieces').appendChild(el);
+  renderPiece(piece);                     // 先渲染拿到 cw/ch
+  if(panToIdx!=null) panPieceToFrame(piece, +panToIdx);
+  centerPieceAt(piece, nx, ny);
+  el.classList.add('placing');
+  bindPieceEvents(piece);
+  updatePlaceholder();
+  return piece;
+}
+function removePiece(piece){
+  piece.el.remove();
+  pieces = pieces.filter(p=>p!==piece);
+  updatePlaceholder();
+}
+function removePiecesByRoll(rollId){
+  pieces.filter(p=>String(p.rollId)===String(rollId)).forEach(p=>p.el.remove());
+  pieces = pieces.filter(p=>String(p.rollId)!==String(rollId));
+  updatePlaceholder();
+}
+function rerenderPiecesByRoll(rollId){
+  pieces.forEach(p=>{ if(String(p.rollId)===String(rollId)) renderPiece(p); });
+}
+// 多片落点层叠,避免完全重叠
+function cascadePos(){
+  const n = pieces.length;
+  return { x: TW/2 + (n%6)*40, y: TH/2 + (n%6)*40 };
+}
+
+// —— piece 交互:把手=移动整片;帧区横拖/滚轮=片内平移(无可平移内容时也=移动) ——
+function bindPieceEvents(piece){
+  const el = piece.el, canvas = piece.canvas;
+  let mode=null, startX=0, startY=0, baseX=0, baseY=0, basePan=0, maxPan=0;
+
+  function beginMove(e){
+    mode='move'; startX=e.clientX; startY=e.clientY; baseX=piece.x; baseY=piece.y;
+    raisePiece(piece); el.classList.add('dragging');
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  }
+  function beginPan(e){
+    const L = pieceLayout(piece);
+    raisePiece(piece);
+    if(!L || L.maxPan<=0){ beginMove(e); return; }   // 无可平移内容 -> 整片移动
+    mode='pan'; startX=e.clientX; basePan=piece.panX; maxPan=L.maxPan;
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+  }
+
+  el.querySelector('.piece-grip').addEventListener('pointerdown', e=>{
+    if(e.button) return; e.stopPropagation(); beginMove(e);
+  });
+  canvas.addEventListener('pointerdown', e=>{
+    if(e.button) return; beginPan(e);
+  });
+  el.addEventListener('pointermove', e=>{
+    if(!mode) return;
+    if(mode==='move'){
+      const s = deckScale();
+      piece.x = baseX + (e.clientX-startX)/s;
+      piece.y = baseY + (e.clientY-startY)/s;
+      layoutPieceEl(piece);
+    } else {
+      piece.panX = clamp(basePan - (e.clientX-startX)*(TW/screen.clientWidth), 0, maxPan);
+      renderPiece(piece);
+    }
+  });
+  function endDrag(e){
+    if(!mode) return; mode=null;
+    el.classList.remove('dragging');
+    try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+  }
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+  el.addEventListener('wheel', e=>{
+    const L = pieceLayout(piece); if(!L || L.maxPan<=0) return;
+    e.preventDefault();
+    piece.panX = clamp(piece.panX + e.deltaY*(TW/screen.clientWidth)*0.5, 0, L.maxPan);
+    renderPiece(piece);
+  }, {passive:false});
+  el.querySelector('.piece-del').addEventListener('click', e=>{
+    e.stopPropagation(); removePiece(piece);
+  });
+}
+
+// —— 卷操作 ——
+function newRoll(){
+  const id = nextId++;
+  const roll = { id, name:'卷 '+id, shots:[] };
+  rolls.push(roll); renderTray();
+  return roll;
+}
+function deleteRoll(roll){
+  roll.shots.forEach(s=>URL.revokeObjectURL(s.url));
+  removePiecesByRoll(roll.id);
+  rolls = rolls.filter(r=>r!==roll);
+  renderTray();
+}
+function removeShot(roll, i){
+  URL.revokeObjectURL(roll.shots[i].url);
+  roll.shots.splice(i,1);
+  if(roll.shots.length) rerenderPiecesByRoll(roll.id);
+  else removePiecesByRoll(roll.id);   // 卷空了,连带移除其 piece
+  renderTray();
+}
+function moveShot(tdata, target){
+  const [rid,idx] = tdata.split(':');
+  const src = rollById(rid); if(!src || src===target) return;
+  const [shot] = src.shots.splice(+idx,1); if(!shot) return;
+  target.shots.push(shot);
+  if(!src.shots.length) removePiecesByRoll(src.id);
+  else rerenderPiecesByRoll(src.id);
+  rerenderPiecesByRoll(target.id);
+  renderTray();
+}
+
+// —— 导入照片进某卷 ——
+function addFiles(list, roll){
   const imgs = [...list].filter(f=>f.type.startsWith('image/'));
   if(!imgs.length) return;
-  let firstNew = null;
+  roll = roll || importTarget || (rolls.length ? rolls[rolls.length-1] : newRoll());
+  importTarget = null;
   imgs.forEach(f=>{
     const url = URL.createObjectURL(f);
     const im = new Image();
     const shot = { url, img:im };
-    im.onload = ()=>{ if(firstNew===shot && !activeImg) place(im); };
+    im.onload = ()=>{ rerenderPiecesByRoll(roll.id); renderTray(); };
     im.src = url;
-    shots.push(shot);
-    if(!firstNew) firstNew = shot;
+    roll.shots.push(shot);
   });
   renderTray();
 }
+
+// —— 渲染候选区(按卷分组) ——
 function renderTray(){
-  const wrap = $('#thumbs');
-  wrap.querySelectorAll('.thumb').forEach(n=>n.remove());
-  $('#trayEmpty').style.display = shots.length ? 'none' : 'block';
-  shots.forEach((s,i)=>{
-    const t = document.createElement('div');
-    t.className = 'thumb' + (activeImg===s.img ? ' on':'');
-    t.dataset.i = i; t.draggable = true;
-    t.innerHTML = `<img src="${s.url}" alt=""><button class="del" title="移除">×</button>`;
-    wrap.appendChild(t);
+  const wrap = $('#rolls');
+  wrap.querySelectorAll('.roll').forEach(n=>n.remove());
+  $('#trayEmpty').style.display = rolls.length ? 'none' : 'block';
+  rolls.forEach(roll=>{
+    const onDeck = pieces.some(pc=>String(pc.rollId)===String(roll.id));
+    const sec = document.createElement('section');
+    sec.className = 'roll' + (onDeck ? ' on' : '');
+    sec.dataset.r = roll.id;
+    let thumbs = '';
+    roll.shots.forEach((s,i)=>{
+      thumbs += `<div class="thumb" draggable="true" data-r="${roll.id}" data-i="${i}"><img src="${s.url}" alt=""><button class="del" title="移除">×</button></div>`;
+    });
+    sec.innerHTML =
+      `<header class="roll-h" draggable="true" title="拖到台面 = 放这卷">`+
+        `<span class="roll-name">${roll.name}</span>`+
+        `<span class="roll-count">${roll.shots.length}</span>`+
+        `<button class="roll-del" title="删除整卷">×</button>`+
+      `</header>`+
+      `<div class="roll-thumbs">${thumbs}<div class="roll-add" title="加照片进这卷">＋</div></div>`;
+    wrap.appendChild(sec);
   });
 }
 
 // —— 导出 ——
 const file = $('#file');
 function save(){
-  if(!activeImg) return;
+  if(!pieces.length) return;
   const type = fmt==='png' ? 'image/png' : 'image/jpeg';
-  cv.toBlob(blob => {
+  const out = document.createElement('canvas');
+  out.width = TW; out.height = TH;
+  const oc = out.getContext('2d');
+  oc.drawImage(bg,0,0,TW,TH);                      // 发光台面背景
+  pieces.slice().sort((a,b)=>a.z-b.z)              // 按 z 从底到顶合成
+        .forEach(pc=>oc.drawImage(pc.canvas, pc.x, pc.y));  // nominal 1:1,台面外自然被裁
+  out.toBlob(blob => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'filmscan.' + fmt;
@@ -449,7 +734,11 @@ films.forEach((f,i)=>{
     filmIdx = i;
     document.querySelectorAll('.film').forEach(n=>n.classList.remove('on'));
     el.classList.add('on');
-    if(activeImg){ render(); cv.classList.remove('placing'); void cv.offsetWidth; cv.classList.add('placing'); }
+    pieces.forEach(pc=>{                 // 切规格:所有 piece 归零平移并重渲
+      pc.panX = 0;
+      renderPiece(pc);
+      pc.el.classList.remove('placing'); void pc.el.offsetWidth; pc.el.classList.add('placing');
+    });
   };
   filmsEl.appendChild(el);
 });
@@ -464,32 +753,50 @@ presets.forEach((ps,i)=>{
 });
 
 // —— 导入入口 ——
-$('#add').onclick = ()=>file.click();
-$('#placeholder').onclick = ()=>file.click();
+$('#newRoll').onclick = ()=>{ newRoll(); };       // 新建空卷(无照片,不自动上台)
+$('#placeholder').onclick = ()=>{ importTarget = newRoll(); file.click(); };  // 引导:新建卷并导入
 file.onchange = e => { addFiles(e.target.files); file.value=''; };
 
-// 候选区:点放上台面 / 删除 / 拖拽起点
-$('#thumbs').addEventListener('click', e=>{
-  const t = e.target.closest('.thumb'); if(!t) return;
-  const i = +t.dataset.i;
-  if(e.target.classList.contains('del')){
-    URL.revokeObjectURL(shots[i].url);
-    const removed = shots[i].img;
-    shots.splice(i,1);
-    if(activeImg===removed){
-      activeImg=null; cv.style.display='none'; $('#placeholder').style.display=''; $('#save').disabled=true;
-    }
-    renderTray(); return;
+// —— 候选区(按卷):点卷头放台面 / 点缩略图放该卷并定位 / 删除 / 卷内＋导入 ——
+const rollsEl = $('#rolls');
+rollsEl.addEventListener('click', e=>{
+  const sec = e.target.closest('.roll'); if(!sec) return;
+  const roll = rollById(sec.dataset.r); if(!roll) return;
+  if(e.target.classList.contains('roll-del')){ deleteRoll(roll); return; }
+  if(e.target.classList.contains('roll-add')){ importTarget = roll; file.click(); return; }
+  const th = e.target.closest('.thumb');
+  if(th){
+    if(e.target.classList.contains('del')){ removeShot(roll, +th.dataset.i); return; }
+    const c = cascadePos(); addPiece(roll, c.x, c.y, +th.dataset.i); return;
   }
-  place(shots[i].img);
+  if(e.target.closest('.roll-h')){ const c = cascadePos(); addPiece(roll, c.x, c.y); }
 });
-$('#thumbs').addEventListener('dragstart', e=>{
-  const t = e.target.closest('.thumb'); if(!t) return;
-  e.dataTransfer.setData('text/fs-thumb', t.dataset.i);
-  e.dataTransfer.effectAllowed = 'copy';
+rollsEl.addEventListener('dragstart', e=>{
+  const th = e.target.closest('.thumb');
+  if(th){ e.dataTransfer.setData('text/fs-thumb', th.dataset.r+':'+th.dataset.i); e.dataTransfer.effectAllowed='copyMove'; return; }
+  const h = e.target.closest('.roll-h');
+  if(h){ e.dataTransfer.setData('text/fs-roll', h.closest('.roll').dataset.r); e.dataTransfer.effectAllowed='copy'; }
+});
+// 卷作为放置目标:把照片拖进这卷 / 外部文件导入这卷
+rollsEl.addEventListener('dragover', e=>{
+  const sec = e.target.closest('.roll'); if(!sec) return;
+  if(e.dataTransfer.types.includes('text/fs-thumb') || e.dataTransfer.types.includes('Files')){
+    e.preventDefault(); sec.classList.add('drop-on');
+  }
+});
+rollsEl.addEventListener('dragleave', e=>{
+  const sec = e.target.closest('.roll'); if(sec && !sec.contains(e.relatedTarget)) sec.classList.remove('drop-on');
+});
+rollsEl.addEventListener('drop', e=>{
+  const sec = e.target.closest('.roll'); if(!sec) return;
+  sec.classList.remove('drop-on');
+  const roll = rollById(sec.dataset.r); if(!roll) return;
+  const td = e.dataTransfer.getData('text/fs-thumb');
+  if(td){ e.preventDefault(); moveShot(td, roll); return; }
+  if(e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files, roll); }
 });
 
-// 台面接收拖放
+// —— 台面:接收整卷/单帧所在卷/外部文件 -> 在落点处新建 piece ——
 const screen = $('#screen');
 ['dragover','dragenter'].forEach(ev=>screen.addEventListener(ev,e=>{
   e.preventDefault(); screen.classList.add('drag-on'); e.dataTransfer.dropEffect='copy';
@@ -497,19 +804,24 @@ const screen = $('#screen');
 ['dragleave','dragend'].forEach(ev=>screen.addEventListener(ev,e=>screen.classList.remove('drag-on')));
 screen.addEventListener('drop', e=>{
   e.preventDefault(); screen.classList.remove('drag-on');
-  const idx = e.dataTransfer.getData('text/fs-thumb');
-  if(idx!=='' && shots[+idx]){ place(shots[+idx].img); return; }
-  if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  const rect = screen.getBoundingClientRect();
+  const s = deckScale();
+  const nx = (e.clientX-rect.left)/s, ny = (e.clientY-rect.top)/s;   // 落点(nominal)
+  const rid = e.dataTransfer.getData('text/fs-roll');
+  if(rid){ const r = rollById(rid); if(r) addPiece(r, nx, ny); return; }
+  const td = e.dataTransfer.getData('text/fs-thumb');
+  if(td){ const [r2,idx] = td.split(':'); const r = rollById(r2); if(r) addPiece(r, nx, ny, +idx); return; }
+  if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files);   // 外部文件 -> 进卷(不直接建 piece)
 });
 
-// 候选区:外部文件拖入即导入
+// 候选区:外部文件拖到卷以外的空白处=进默认卷
 const tray = $('#tray');
 ['dragover','dragenter'].forEach(ev=>tray.addEventListener(ev,e=>{
   if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); tray.classList.add('drag-on'); }
 }));
 ['dragleave','drop'].forEach(ev=>tray.addEventListener(ev,e=>tray.classList.remove('drag-on')));
 tray.addEventListener('drop', e=>{
-  if(e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files); }
+  if(e.dataTransfer.files.length && !e.target.closest('.roll')){ e.preventDefault(); addFiles(e.dataTransfer.files); }
 });
 
 // 轮播交互
@@ -519,15 +831,18 @@ window.addEventListener('keydown', e=>{
   if(e.key==='ArrowLeft') go(-1);
   if(e.key==='ArrowRight') go(1);
 });
-let tx=null;
+let tx=null, txOnPiece=false;
 const scene = $('.scene');
-scene.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; }, {passive:true});
+scene.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; txOnPiece=!!e.target.closest('.piece'); }, {passive:true});
 scene.addEventListener('touchend', e=>{
   if(tx===null) return;
   const dx = e.changedTouches[0].clientX - tx;
-  if(Math.abs(dx)>50) go(dx<0 ? 1 : -1);
+  if(!txOnPiece && Math.abs(dx)>50) go(dx<0 ? 1 : -1);   // 命中 piece 则交给 piece 处理,不切台
   tx=null;
 });
+
+// 窗口缩放:piece 的 nominal 坐标不变,仅按新 scale 重排 CSS
+window.addEventListener('resize', ()=> pieces.forEach(layoutPieceEl));
 
 // 滑块
 for(const k in ui) ui[k].oninput = () => {
@@ -556,6 +871,50 @@ $('#closeDrawer').onclick = ()=>toggleDrawer(false);
 scrim.onclick = ()=>toggleDrawer(false);
 
 applyPreset(0);
+updatePlaceholder();
+
+// —— 页内零依赖自检:打开 index.html?selftest 自动跑,右下角浮层显示 PASS/FAIL ——
+if(location.search.includes('selftest')){
+  const T=[], ok=(n,c)=>T.push([n,!!c]);
+  const r = newRoll();
+  const im = new Image();
+  im.onload = ()=>{
+    r.shots.push({ url:im.src, img:im });
+    const p1 = addPiece(r, 600, 700);
+    ok('建 piece 后 pieces 长度=1', pieces.length===1);
+    ok('piece 有 canvas 且已渲染', p1 && p1.canvas.width>0 && p1.canvas.height>0);
+    ok('占位已隐藏', $('#placeholder').style.display==='none');
+    ok('piece 已写入 left/top', p1.el.style.left!=='' && p1.el.style.top!=='');
+    const p2 = addPiece(r, 1200, 700);
+    ok('可摆第二片(同卷多片)', pieces.length===2);
+    ok('第二片 z 更高', p2.z>p1.z);
+    const bx = p1.x; p1.x += 120; layoutPieceEl(p1);
+    ok('移动改变 left', p1.el.style.left===(p1.x*deckScale())+'px' && p1.x!==bx);
+    removePiece(p2);
+    ok('删除 piece 后长度回 1', pieces.length===1);
+    const oc = document.createElement('canvas'); oc.width=TW; oc.height=TH;
+    const c2 = oc.getContext('2d');
+    c2.drawImage(bg,0,0,TW,TH);
+    pieces.forEach(pc=>c2.drawImage(pc.canvas, pc.x, pc.y));
+    // WYSIWYG:采样 p1 中心(帧区,1x1 黑图),应非纯白台面底色 -> 证明 piece 真画进导出
+    const sx = clamp(Math.round(p1.x + p1.canvas.width/2), 0, TW-1);
+    const sy = clamp(Math.round(p1.y + p1.canvas.height/2), 0, TH-1);
+    const px = c2.getImageData(sx, sy, 1, 1).data;
+    ok('导出含 piece 像素(非纯白底)', !(px[0]===255 && px[1]===255 && px[2]===255));
+    oc.toBlob(b=>{
+      ok('导出 blob 非空', b && b.size>0);
+      removePiece(pieces[0]);
+      ok('删光后占位重现', pieces.length===0 && $('#placeholder').style.display==='');
+      const pass = T.every(t=>t[1]);
+      console.table(T.map(([n,v])=>({test:n,pass:v})));
+      const d = document.createElement('div');
+      d.style.cssText='position:fixed;right:8px;bottom:8px;z-index:99;padding:8px 12px;border-radius:8px;font:12px monospace;color:#fff;background:'+(pass?'#1a7f37':'#b42318');
+      d.textContent=(pass?'SELFTEST PASS ':'SELFTEST FAIL ')+T.filter(t=>!t[1]).map(t=>t[0]).join('; ');
+      document.body.appendChild(d);
+    }, 'image/png');
+  };
+  im.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+}
 </script>
 </body>
 </html>
