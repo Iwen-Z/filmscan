@@ -1,0 +1,224 @@
+  :root{
+    --ink:#ece7dc; --sub:#9d978a; --line:rgba(255,255,255,.10);
+    --panel:#17161a; --panel-line:rgba(255,255,255,.07); --accent:#e8dcc0;
+    /* 灯箱暖白高亮,取代旧的 neon 蓝紫描边 */
+    --hl:#e3d4ad; --hl-rgb:227,212,173;
+    --hl-soft:rgba(227,212,173,.22);
+    --tray:124px;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    font:15px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink); -webkit-font-smoothing:antialiased; overflow:hidden;
+    /* 暗房台面:暖中性、中心微微透出台灯余光,去掉旧的蓝灰网页调 */
+    background:
+      radial-gradient(135% 100% at 50% 40%, #2b2824 0%, #1d1b19 48%, #121110 100%),
+      #121110;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.05; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  header{ position:fixed; top:0; left:0; right:var(--tray); text-align:center; padding:18px 16px 0;
+          z-index:5; pointer-events:none; }
+  header h1{ font-size:15px; font-weight:600; letter-spacing:3px; color:#fff; opacity:.85; }
+  header p{ color:var(--sub); font-size:12px; margin-top:3px; opacity:.7; }
+
+  .scene{ position:fixed; inset:0; right:var(--tray); z-index:1; display:flex;
+          align-items:center; justify-content:center; padding:58px 70px 112px; }
+
+  /* 观片台:固定大小的实体台子 */
+  .lightbox{ position:relative;
+             width:min(64vw, calc(60vh * 1.33), 820px); }
+
+  .body{ position:relative; border-radius:3px;
+         transition:padding .3s ease, border-radius .3s ease, background .3s ease, box-shadow .3s ease; }
+  /* 发光台面:固定 4:3,canvas(整块台面)铺满。台面玻璃基本直角嵌进机身 */
+  .screen{ position:relative; border-radius:2px; overflow:hidden;
+           width:100%; aspect-ratio:4/3; background:rgba(255,255,255,.05);
+           display:flex; align-items:center; justify-content:center; }
+  /* 拖入文件:台面整体提亮+暖白内圈,而不是 neon 虚线框 */
+  .screen.drag-on{ box-shadow:inset 0 0 0 2px var(--hl-soft), inset 0 0 70px 12px rgba(var(--hl-rgb),.28); }
+
+  /* 专业观片台:方正拉丝金属机身,直角玻璃,只在棱边吃光 */
+  .body.pro{ background:linear-gradient(155deg,#ececed 0%,#d2d2d7 42%,#b4b4bb 100%); padding:5.5%; border-radius:4px;
+             box-shadow:0 30px 64px rgba(0,0,0,.6),
+                        inset 0 2px 0 rgba(255,255,255,.9), inset 0 -3px 4px rgba(0,0,0,.28),
+                        inset 2px 0 2px rgba(255,255,255,.35), inset -2px 0 3px rgba(0,0,0,.16); }
+  .body.pro .screen{ border-radius:2px;
+                     box-shadow:0 0 90px 26px rgba(255,255,255,.5), inset 0 0 0 1px rgba(0,0,0,.4); }
+  /* iPad:唯一保留大圆角的设备 */
+  .body.ipad{ background:linear-gradient(#3a3a40,#202024); padding:2.8%; border-radius:30px;
+              box-shadow:0 26px 60px rgba(0,0,0,.6),
+                         inset 0 0 0 1px rgba(255,255,255,.12), inset 0 2px 1px rgba(255,255,255,.18); }
+  .body.ipad .screen{ border-radius:14px; box-shadow:0 0 80px 18px rgba(210,225,255,.45); }
+  /* 暖光老灯箱:方正烤漆/木质箱体,做旧暖色,直角玻璃 */
+  .body.vintage{ background:linear-gradient(160deg,#f3ead5 0%,#e3d4b1 55%,#c9b585 100%); padding:6.5%; border-radius:3px;
+                 box-shadow:0 30px 60px rgba(0,0,0,.58), inset 0 2px 0 rgba(255,255,255,.55),
+                            inset 0 -4px 7px rgba(120,90,40,.3), inset 0 0 0 1px rgba(120,95,55,.28); }
+  .body.vintage .screen{ border-radius:2px;
+                         box-shadow:0 0 96px 30px rgba(255,214,150,.5), inset 0 0 0 1px rgba(90,65,30,.42); }
+
+  .nameplate{ position:absolute; bottom:1.5%; left:50%; transform:translateX(-50%);
+              font-size:10px; letter-spacing:2px; opacity:.5; pointer-events:none; color:#555; }
+
+  /* 台面背景:发光台面常亮(bg),其上叠 pieces 图层 */
+  #bg{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+  .pieces{ position:fixed; inset:0; z-index:4; pointer-events:none; }   /* 铺满视口,容器不挡命中 */
+  .piece{ position:absolute; pointer-events:auto; touch-action:none;
+          cursor:grab; will-change:left,top; }
+  .piece canvas{ display:block; width:100%; height:100%; }
+  .piece.placing{ animation:slideUp .5s cubic-bezier(.2,.7,.2,1); }
+  .piece.dragging{ cursor:grabbing; }
+  .piece-del{ position:absolute; right:4px; top:4px; width:20px; height:20px;
+              border-radius:50%; border:none; background:rgba(0,0,0,.6); color:#fff;
+              font-size:12px; line-height:20px; text-align:center; cursor:pointer;
+              opacity:0; transition:.15s; padding:0; }
+  .piece:hover .piece-del{ opacity:1; }
+  @keyframes slideUp{ from{ transform:translateY(6%); opacity:0; } to{ transform:none; opacity:1; } }
+
+  /* 阶段2:选中某帧后浮在该帧上方的「剪下」按钮 */
+  .cut-btn{ position:fixed; z-index:10; transform:translate(-50%,-100%);
+            background:rgba(26,24,21,.92); color:var(--hl); border:1px solid rgba(var(--hl-rgb),.5);
+            border-radius:6px; padding:6px 12px; font:600 12px/1 inherit; cursor:pointer;
+            box-shadow:0 6px 18px rgba(0,0,0,.5); white-space:nowrap; backdrop-filter:blur(6px); }
+  .cut-btn:hover{ background:rgba(40,37,31,.95); color:#f3e8cc; }
+
+  /* 单张胶片点击后浮出的「边框样式」工具条 */
+  .frame-bar{ position:fixed; z-index:10; transform:translate(-50%,-100%);
+              display:flex; gap:2px; padding:3px; white-space:nowrap;
+              background:rgba(26,24,21,.92); border:1px solid rgba(var(--hl-rgb),.5);
+              border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.5); backdrop-filter:blur(6px); }
+  .frame-opt{ background:transparent; color:var(--hl); border:none; border-radius:5px;
+              padding:5px 10px; font:600 12px/1 inherit; cursor:pointer; }
+  .frame-opt:hover{ background:rgba(255,255,255,.08); color:#f3e8cc; }
+  .frame-opt.on{ background:rgba(var(--hl-rgb),.22); color:#f3e8cc; }
+
+  .placeholder{ position:absolute; inset:0; display:flex; flex-direction:column;
+                align-items:center; justify-content:center; gap:6px;
+                color:var(--sub); font-size:13px; text-align:center; cursor:pointer; line-height:1.7; }
+  .placeholder b{ font-size:15px; color:inherit; opacity:.9; }
+
+  /* 右侧:按「卷」分组的胶卷候选区 */
+  .tray{ position:fixed; top:0; right:0; bottom:0; width:var(--tray); z-index:6;
+         background:linear-gradient(rgba(22,20,18,.82),rgba(16,15,13,.86)); backdrop-filter:blur(10px);
+         border-left:1px solid rgba(0,0,0,.5); box-shadow:inset 1px 0 0 rgba(255,255,255,.05);
+         display:flex; flex-direction:column; padding:14px 0; }
+  .newroll{ flex:0 0 auto; margin:0 14px 12px; padding:12px 0; cursor:pointer;
+            border:1px dashed var(--line); border-radius:6px; text-align:center;
+            color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
+  .newroll:hover, .tray.drag-on .newroll{ border-color:var(--hl); color:var(--hl); }
+  .newroll b{ display:block; font-size:20px; font-weight:400; color:inherit; }
+  /* 新建卷:点「＋」后内联弹出的胶片类型三选一(纯原生,零依赖) */
+  .newroll-panel{ flex:0 0 auto; margin:-6px 14px 12px; display:flex; gap:5px; }
+  .newroll-panel[hidden]{ display:none; }
+  .newroll-panel button{ flex:1 1 0; font:inherit; font-size:11px; cursor:pointer; padding:7px 0;
+          border:1px solid var(--line); border-radius:6px; background:rgba(255,255,255,.03);
+          color:var(--sub); transition:.15s; }
+  .newroll-panel button:hover{ border-color:var(--hl); color:var(--hl); }
+  .rolls{ flex:1 1 auto; overflow-y:auto; padding:0 10px 8px;
+          display:flex; flex-direction:column; gap:12px; }
+  /* 默认胶圈态:每卷一张紧凑的「卷起的胶圈」小图 + 名称/张数 + ＋/× 按钮 */
+  .roll{ display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px;
+         padding:8px; transition:border-color .15s, background .15s; cursor:grab; touch-action:none;
+         background:rgba(255,255,255,.02); box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
+  .roll:active{ cursor:grabbing; }
+  .roll:hover{ border-color:rgba(var(--hl-rgb),.4); background:rgba(255,255,255,.045); }
+  .roll.on{ border-color:rgba(var(--hl-rgb),.6); background:rgba(var(--hl-rgb),.07); }
+  .roll.drop-on{ border-color:var(--hl); background:rgba(var(--hl-rgb),.13); }
+  .coil{ flex:0 0 auto; width:56px; height:56px; display:block; pointer-events:none; }
+  .roll-meta{ flex:1 1 auto; min-width:0; }
+  .roll-name{ font-size:12px; color:var(--ink); font-weight:600;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .roll-count{ font-size:10px; color:var(--sub); margin-top:3px; }
+  /* 卷内切换胶片类型:点一下循环 反转->黑白->负片,该卷所有 piece 实时重渲 */
+  .roll-type{ display:inline-block; margin-top:5px; font:inherit; font-size:10px; line-height:1;
+              cursor:pointer; padding:3px 8px; border-radius:10px; border:1px solid var(--line);
+              background:rgba(255,255,255,.04); color:var(--sub); transition:.15s; }
+  .roll-type:hover{ border-color:var(--hl); color:var(--hl); }
+  .roll-btns{ flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
+  .roll-add, .roll-del{ width:22px; height:22px; padding:0; border-radius:50%; cursor:pointer;
+              border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--sub);
+              font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+              transition:.15s; }
+  .roll-add:hover{ border-color:var(--hl); color:var(--hl); }
+  .roll-del:hover{ border-color:#ff8a8a; color:#ff8a8a; }
+  .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
+
+  /* hover 某卷 -> 向左(朝台面)水平铺开该卷帧预览;仅预览,pointerdown 仍抓整卷 */
+  .roll-expand{ position:fixed; right:var(--tray); z-index:7; display:none;
+                align-items:center; gap:6px; height:96px; padding:8px 10px;
+                max-width:calc(100vw - var(--tray) - 24px); overflow:hidden;
+                background:linear-gradient(rgba(28,25,22,.95),rgba(18,16,14,.96));
+                border:1px solid rgba(var(--hl-rgb),.3); border-right:none;
+                border-radius:8px 0 0 8px; box-shadow:-12px 0 32px rgba(0,0,0,.55);
+                backdrop-filter:blur(10px); cursor:grab; }
+  .roll-expand:active{ cursor:grabbing; }
+  .roll-expand canvas{ display:block; flex:0 0 auto; border-radius:2px; pointer-events:none;
+                       box-shadow:0 0 0 1px rgba(0,0,0,.4); }
+  .roll-expand .ex-empty{ color:var(--sub); font-size:12px; padding:0 8px; white-space:nowrap; }
+
+  /* 底部:胶卷规格 + 台名 */
+  .dock{ position:fixed; bottom:16px; left:0; right:var(--tray); z-index:6;
+         display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none; }
+  .films{ display:flex; gap:7px; pointer-events:auto; }
+  .film{ padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; line-height:1.2;
+         border:1px solid var(--line); background:rgba(26,24,21,.6); color:var(--sub);
+         backdrop-filter:blur(8px); transition:.15s; }
+  .film:hover{ color:var(--ink); border-color:rgba(var(--hl-rgb),.4); }
+  .film.on{ background:var(--accent); color:#211d16; border-color:var(--accent); }
+  .film small{ display:block; font-size:9px; opacity:.6; }
+  .deckname{ font-size:13px; letter-spacing:2px; color:#fff; opacity:.8; }
+
+  .gear{ position:fixed; top:16px; left:16px; z-index:7; width:42px; height:42px;
+         border-radius:50%; border:1px solid var(--line); background:rgba(26,24,21,.6);
+         color:var(--ink); font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
+  .gear:hover{ background:rgba(44,40,33,.85); }
+  .drawer{ position:fixed; top:0; left:0; bottom:0; width:320px; max-width:88vw; z-index:9;
+           background:linear-gradient(180deg,#1b1916,#141310);
+           border-right:1px solid rgba(0,0,0,.5); box-shadow:inset -1px 0 0 rgba(255,255,255,.05), 12px 0 40px rgba(0,0,0,.5);
+           padding:22px 20px; overflow-y:auto; transform:translateX(-100%);
+           transition:transform .32s cubic-bezier(.4,0,.2,1); }
+  .drawer.open{ transform:translateX(0); }
+  .drawer h2{ font-size:14px; font-weight:600; letter-spacing:2px; color:#fff; opacity:.9; }
+  .drawer .close{ position:absolute; top:16px; right:16px; background:none; border:none;
+                  color:var(--sub); font-size:22px; cursor:pointer; width:auto; padding:4px; }
+  .scrim{ position:fixed; inset:0; z-index:8; background:rgba(0,0,0,.4); opacity:0;
+          pointer-events:none; transition:opacity .3s; }
+  .scrim.on{ opacity:1; pointer-events:auto; }
+
+  /* 设置分组:每组一块,带标题与分隔线 */
+  .group{ margin-top:22px; padding-top:18px; border-top:1px solid var(--panel-line); }
+  .group-h{ font-size:11px; font-weight:700; letter-spacing:2.5px; color:var(--hl); }
+  .group-sub{ color:var(--sub); font-size:11px; opacity:.7; margin-top:2px; }
+  label.ctrl{ display:block; margin:14px 0 6px; font-size:13px; color:var(--sub); }
+  label.ctrl b{ color:var(--ink); font-weight:600; float:right; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  .seg{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .seg button,.btn{ font:inherit; cursor:pointer; border-radius:6px; }
+  .seg button{ flex:1 1 0; min-width:54px; background:transparent; color:var(--sub); border:1px solid var(--line);
+               padding:8px 6px; font-weight:500; line-height:1.2; transition:.15s; }
+  .seg button:hover{ color:var(--ink); border-color:rgba(var(--hl-rgb),.4); }
+  .seg button.on{ background:var(--accent); color:#211d16; border-color:var(--accent); }
+  .seg button small{ display:block; font-size:9px; opacity:.6; margin-top:1px; }
+  .btn{ width:100%; border:none; padding:12px; font-weight:600; margin-top:14px;
+        background:var(--accent); color:#211d16; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  @media(max-width:680px){
+    :root{ --tray:0px; }
+    .tray{ top:auto; left:0; right:0; bottom:0; width:auto; height:120px; flex-direction:row;
+           border-left:none; border-top:1px solid var(--line); padding:10px 12px; align-items:center; }
+    .newroll{ margin:0 10px 0 0; width:60px; height:100%; padding:0;
+              display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .rolls{ flex-direction:row; overflow-x:auto; overflow-y:hidden; padding:0; height:100%; gap:8px; }
+    .roll{ flex:0 0 auto; height:100%; flex-direction:row; padding:6px 8px; gap:6px; }
+    .roll-expand{ display:none !important; }   /* 触屏底部 tray 不做左侧展开预览 */
+    .tray .empty{ margin:0; }
+    .scene{ inset:0; bottom:120px; padding:50px 14px 116px; }
+    .dock{ right:0; bottom:128px; }
+    .films{ flex-wrap:wrap; justify-content:center; }
+    header{ right:0; }
+  }
