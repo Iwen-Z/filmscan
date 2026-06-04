@@ -25,6 +25,44 @@
 
 单文件 HTML + Canvas,无框架、无后端。可白嫖部署到 GitHub Pages / Vercel。
 
+## 开发 / 自检
+
+本仓库现为 Vite + TypeScript(`npm install` 后):
+
+- `npm run dev` — 开发服务器(默认 `http://localhost:5173`)
+- `npm run build` — 产出 `dist/`(静态产物)
+- `npm run preview` — 在本地预览 build 产物(默认 `http://localhost:4173`)
+- `npx tsc --noEmit` — 类型检查
+
+### 页内自检(`?selftest`)
+
+任一模式下,在 URL 后加 `?selftest` 会动态 import `src/selftest.ts` 跑断言,
+右下角浮层显示 `SELFTEST PASS`(绿)/ `SELFTEST FAIL`(红):
+
+- dev:`http://localhost:5173/?selftest`
+- preview(build 产物):`http://localhost:4173/?selftest`
+
+> ESM 动态 `import('./selftest')` 由 Vite 打成独立带 hash 的 chunk,主 chunk 已正确引用,
+> dev 与 build 产物路径均自动正确,无需手工处理 chunk 路径。
+
+### 无头自检(一键)
+
+```bash
+npm run selftest:headless
+```
+
+脚本 `scripts/selftest-headless.sh` 会:`npm run build` → 后台起 `vite preview`(端口 4173)
+→ 无头 Chrome(`--headless --disable-gpu --virtual-time-budget=3000 --dump-dom`)访问
+`http://localhost:4173/?selftest` → grep 浮层文本含 `SELFTEST PASS` → 杀掉 preview →
+退出码 `0`(PASS)/ `1`(FAIL)。可用 `CHROME=/path/to/chrome` 指定浏览器、`SELFTEST_PORT=xxxx` 改端口。
+
+**若 CI 路径上没有无头 Chrome**,手动等价步骤:
+
+```bash
+npm run build && npm run preview
+# 浏览器打开 http://localhost:4173/?selftest,看右下角浮层是否 SELFTEST PASS
+```
+
 ## License
 
 MIT

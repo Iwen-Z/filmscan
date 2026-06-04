@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "selftest:headless": "bash scripts/selftest-headless.sh"
   },
   "repository": {
     "type": "git",
