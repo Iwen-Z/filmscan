@@ -43,26 +43,33 @@
   .lightbox.sliding-left{ transform:translateX(-34px); opacity:0; }
   .lightbox.sliding-right{ transform:translateX(34px); opacity:0; }
 
-  .body{ position:relative; border-radius:20px;
+  .body{ position:relative; border-radius:3px;
          transition:padding .3s ease, border-radius .3s ease, background .3s ease, box-shadow .3s ease; }
-  /* 发光台面:固定 4:3,canvas(整块台面)铺满 */
-  .screen{ position:relative; border-radius:6px; overflow:hidden;
+  /* 发光台面:固定 4:3,canvas(整块台面)铺满。台面玻璃基本直角嵌进机身 */
+  .screen{ position:relative; border-radius:2px; overflow:hidden;
            width:100%; aspect-ratio:4/3; background:rgba(255,255,255,.05);
            display:flex; align-items:center; justify-content:center; }
   /* 拖入文件:台面整体提亮+暖白内圈,而不是 neon 虚线框 */
   .screen.drag-on{ box-shadow:inset 0 0 0 2px var(--hl-soft), inset 0 0 70px 12px rgba(var(--hl-rgb),.28); }
 
-  .body.pro{ background:linear-gradient(#d9d9dc,#bdbdc2); padding:5.5%;
-             box-shadow:0 26px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.7); }
-  .body.pro .screen{ border-radius:4px; box-shadow:0 0 90px 26px rgba(255,255,255,.5); }
+  /* 专业观片台:方正拉丝金属机身,直角玻璃,只在棱边吃光 */
+  .body.pro{ background:linear-gradient(155deg,#ececed 0%,#d2d2d7 42%,#b4b4bb 100%); padding:5.5%; border-radius:4px;
+             box-shadow:0 30px 64px rgba(0,0,0,.6),
+                        inset 0 2px 0 rgba(255,255,255,.9), inset 0 -3px 4px rgba(0,0,0,.28),
+                        inset 2px 0 2px rgba(255,255,255,.35), inset -2px 0 3px rgba(0,0,0,.16); }
+  .body.pro .screen{ border-radius:2px;
+                     box-shadow:0 0 90px 26px rgba(255,255,255,.5), inset 0 0 0 1px rgba(0,0,0,.4); }
+  /* iPad:唯一保留大圆角的设备 */
   .body.ipad{ background:linear-gradient(#3a3a40,#202024); padding:2.8%; border-radius:30px;
               box-shadow:0 26px 60px rgba(0,0,0,.6),
                          inset 0 0 0 1px rgba(255,255,255,.12), inset 0 2px 1px rgba(255,255,255,.18); }
   .body.ipad .screen{ border-radius:14px; box-shadow:0 0 80px 18px rgba(210,225,255,.45); }
-  .body.vintage{ background:linear-gradient(#efe6d2,#d8c9a8); padding:6.5%; border-radius:14px;
-                 box-shadow:0 26px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.5),
-                            inset 0 -2px 4px rgba(120,90,40,.2); }
-  .body.vintage .screen{ border-radius:3px; box-shadow:0 0 96px 30px rgba(255,214,150,.5); }
+  /* 暖光老灯箱:方正烤漆/木质箱体,做旧暖色,直角玻璃 */
+  .body.vintage{ background:linear-gradient(160deg,#f3ead5 0%,#e3d4b1 55%,#c9b585 100%); padding:6.5%; border-radius:3px;
+                 box-shadow:0 30px 60px rgba(0,0,0,.58), inset 0 2px 0 rgba(255,255,255,.55),
+                            inset 0 -4px 7px rgba(120,90,40,.3), inset 0 0 0 1px rgba(120,95,55,.28); }
+  .body.vintage .screen{ border-radius:2px;
+                         box-shadow:0 0 96px 30px rgba(255,214,150,.5), inset 0 0 0 1px rgba(90,65,30,.42); }
 
   .nameplate{ position:absolute; bottom:1.5%; left:50%; transform:translateX(-50%);
               font-size:10px; letter-spacing:2px; opacity:.5; pointer-events:none; color:#555; }
@@ -272,9 +279,6 @@
     <label class="ctrl">台框预设</label>
     <div class="seg" id="presetSeg"></div>
 
-    <label class="ctrl">边缘透光感 <b id="vGlow">40</b></label>
-    <input id="glow" type="range" min="0" max="100" value="40">
-
     <label class="ctrl">均匀度(中心热点)<b id="vUnif">0</b></label>
     <input id="unif" type="range" min="0" max="100" value="0">
 
@@ -299,8 +303,11 @@
     <label class="ctrl">画幅规格</label>
     <div class="seg" id="filmSeg"></div>
 
-    <label class="ctrl">底片圆角 <b id="vRadius">2</b></label>
-    <input id="radius" type="range" min="0" max="60" value="2">
+    <label class="ctrl">透光感 <b id="vGlow">40</b></label>
+    <input id="glow" type="range" min="0" max="100" value="40">
+
+    <label class="ctrl">底片圆角 <b id="vRadius">0</b></label>
+    <input id="radius" type="range" min="0" max="60" value="0">
   </section>
 
   <!-- 第三组:导出 -->
@@ -347,11 +354,17 @@ const films = [
 ];
 let filmIdx = 1;          // 默认 135
 
-// —— 观片台预设(已移除手机) ——
+// —— 胶片本身的属性(独立于观片台,换台子不变) ——
+//   glow   = 胶片透过背光后边缘的溢光强度(透光是底片的特性,不是台子的)
+//   radius = 底片画幅圆角,真实底片基本是直角 -> 默认 0
+let glow = 40;
+let radius = 0;
+
+// —— 观片台预设(发光台面本身:底色/均匀度/像素网格/机身) ——
 const presets = [
-  { name:'专业观片台', frame:'pro',     base:'#ffffff', glow:40, radius:2,  unif:0,  pixel:0,  plate:'FILMSCAN PRO' },
-  { name:'iPad',       frame:'ipad',    base:'#f5f8ff', glow:55, radius:6,  unif:0,  pixel:22, plate:'' },
-  { name:'暖光老灯箱', frame:'vintage', base:'#fdf3e3', glow:50, radius:1,  unif:55, pixel:0,  plate:'LUMIBOX' },
+  { name:'专业观片台', frame:'pro',     base:'#ffffff', unif:0,  pixel:0,  plate:'FILMSCAN PRO' },
+  { name:'iPad',       frame:'ipad',    base:'#f5f8ff', unif:0,  pixel:22, plate:'' },
+  { name:'暖光老灯箱', frame:'vintage', base:'#fdf3e3', unif:55, pixel:0,  plate:'LUMIBOX' },
 ];
 let cur = 0;
 let p = {...presets[0]};
@@ -440,26 +453,28 @@ function renderPiece(piece){
   piece.el.style.height = (L.ch*s)+'px';
 
   const { shots, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
-  const rad = Math.round(Math.min(fw,fh) * p.radius/100/2);
-  const bandX = originX - g, bandW = CW + 2*g, bandR = Math.round(fh*0.05);
+  const rad = Math.round(Math.min(fw,fh) * radius/100/2);
+  const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
 
-  // 1) 整条胶卷被背光的外侧溢光
-  if(p.glow>0){
+  // 1) 整条胶卷被背光的外侧溢光(胶片透光的体现)
+  if(glow>0){
     ctx.save();
-    ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.85)+')';
+    ctx.shadowColor = 'rgba(255,255,255,'+(glow/100*0.85)+')';
     ctx.shadowBlur  = Math.round(fh*0.16);
     ctx.fillStyle = '#fff';
     rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.fill();
     ctx.restore();
   }
 
-  // 2) 片基(暗色胶卷带)+ 齿孔(台面光透过)
+  // 2) 片基(暗色胶卷带)+ 齿孔真镂空(从片基抠穿 -> 透出底下发光台面)
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
   ctx.fillStyle = '#241f18';
   ctx.fillRect(bandX, bandTop, bandW, BH);
+  // destination-out:把齿孔位置的片基像素清成透明,而不是填一块白色
+  ctx.globalCompositeOperation = 'destination-out';
   const holeW = fh*0.10, holeH = m*0.42, holeR = holeH*0.35, step = fh*0.26;
-  ctx.fillStyle = p.base;
+  ctx.fillStyle = '#000';
   for(let x = bandX + step*0.4; x < bandX + bandW - holeW; x += step){
     rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
     rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
@@ -480,15 +495,6 @@ function renderPiece(piece){
     ctx.save();
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
-    if(p.glow>0){
-      const lw = Math.max(2, Math.round(Math.min(fw,fh)*0.04));
-      ctx.shadowColor = 'rgba(255,255,255,'+(p.glow/100*0.8)+')';
-      ctx.shadowBlur  = Math.round(Math.min(fw,fh)*0.10);
-      ctx.lineWidth   = lw;
-      ctx.strokeStyle = 'rgba(255,255,255,'+(0.30+p.glow/100*0.4)+')';
-      rr(ctx, fx+lw/2, framesY+lw/2, fw-lw, fh-lw, Math.max(0,rad-lw/2));
-      ctx.stroke();
-    }
     ctx.restore();
   });
 
@@ -511,7 +517,7 @@ function render(){ renderBg(); renderAllPieces(); }   // 全局外观变化时
 function applyPreset(i){
   cur = i;
   p = {...presets[i]};
-  ui.glow.value = p.glow; ui.unif.value = p.unif; ui.pixel.value = p.pixel; ui.radius.value = p.radius;
+  ui.unif.value = p.unif; ui.pixel.value = p.pixel;   // glow/radius 属胶片,不随换台子重置
   syncLabels();
   document.querySelectorAll('.swatch').forEach(s=>
     s.classList.toggle('on', s.dataset.c.toLowerCase()===p.base.toLowerCase()));
@@ -998,7 +1004,8 @@ window.addEventListener('resize', ()=>{ pieces.forEach(layoutPieceEl); positionC
 
 // 滑块
 for(const k in ui) ui[k].oninput = () => {
-  p.glow=+ui.glow.value; p.unif=+ui.unif.value; p.pixel=+ui.pixel.value; p.radius=+ui.radius.value;
+  glow=+ui.glow.value; radius=+ui.radius.value;        // 胶片属性
+  p.unif=+ui.unif.value; p.pixel=+ui.pixel.value;      // 观片台属性
   syncLabels(); render();
 };
 $('#swatches').onclick = e => {
