@@ -120,35 +120,40 @@
   .newroll b{ display:block; font-size:20px; font-weight:400; color:inherit; }
   .rolls{ flex:1 1 auto; overflow-y:auto; padding:0 10px 8px;
           display:flex; flex-direction:column; gap:12px; }
-  .roll{ border:1px solid var(--line); border-radius:6px; padding:8px; transition:.15s;
-         background:rgba(255,255,255,.02); box-shadow:inset 0 1px 0 rgba(255,255,255,.04); cursor:grab; }
+  /* 默认胶圈态:每卷一张紧凑的「卷起的胶圈」小图 + 名称/张数 + ＋/× 按钮 */
+  .roll{ display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px;
+         padding:8px; transition:border-color .15s, background .15s; cursor:grab; touch-action:none;
+         background:rgba(255,255,255,.02); box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
   .roll:active{ cursor:grabbing; }
+  .roll:hover{ border-color:rgba(var(--hl-rgb),.4); background:rgba(255,255,255,.045); }
   .roll.on{ border-color:rgba(var(--hl-rgb),.6); background:rgba(var(--hl-rgb),.07); }
   .roll.drop-on{ border-color:var(--hl); background:rgba(var(--hl-rgb),.13); }
-  .roll-h{ display:flex; align-items:center; gap:6px; cursor:grab; margin-bottom:8px;
-           padding:2px 2px 6px; border-bottom:1px solid var(--line); touch-action:none; }
-  .roll-h:active{ cursor:grabbing; }
-  .roll-name{ font-size:12px; color:var(--ink); font-weight:600; flex:1 1 auto;
+  .coil{ flex:0 0 auto; width:56px; height:56px; display:block; pointer-events:none; }
+  .roll-meta{ flex:1 1 auto; min-width:0; }
+  .roll-name{ font-size:12px; color:var(--ink); font-weight:600;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .roll-count{ font-size:10px; color:var(--sub); background:rgba(255,255,255,.08);
-               border-radius:8px; padding:1px 6px; }
-  .roll-del{ background:none; border:none; color:var(--sub); font-size:15px; line-height:1;
-             cursor:pointer; padding:0 2px; opacity:.5; }
-  .roll-del:hover{ opacity:1; color:#ff8a8a; }
-  .roll-thumbs{ display:flex; flex-direction:column; gap:8px; }
-  .thumb{ position:relative; border-radius:4px; overflow:hidden; cursor:grab;
-          border:2px solid transparent; aspect-ratio:1; background:#000; transition:border-color .15s; }
-  .thumb:active{ cursor:grabbing; }
-  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
-  .thumb .del{ position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%;
-               background:rgba(0,0,0,.6); color:#fff; border:none; font-size:12px; line-height:18px;
-               cursor:pointer; opacity:0; transition:.15s; padding:0; }
-  .thumb:hover .del{ opacity:1; }
-  .roll-add{ aspect-ratio:3/1; border:1px dashed var(--line); border-radius:4px; cursor:pointer;
-             display:flex; align-items:center; justify-content:center; color:var(--sub);
-             font-size:16px; transition:.15s; }
+  .roll-count{ font-size:10px; color:var(--sub); margin-top:3px; }
+  .roll-btns{ flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
+  .roll-add, .roll-del{ width:22px; height:22px; padding:0; border-radius:50%; cursor:pointer;
+              border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--sub);
+              font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+              transition:.15s; }
   .roll-add:hover{ border-color:var(--hl); color:var(--hl); }
+  .roll-del:hover{ border-color:#ff8a8a; color:#ff8a8a; }
   .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
+
+  /* hover 某卷 -> 向左(朝台面)水平铺开该卷帧预览;仅预览,pointerdown 仍抓整卷 */
+  .roll-expand{ position:fixed; right:var(--tray); z-index:7; display:none;
+                align-items:center; gap:6px; height:96px; padding:8px 10px;
+                max-width:calc(100vw - var(--tray) - 24px); overflow:hidden;
+                background:linear-gradient(rgba(28,25,22,.95),rgba(18,16,14,.96));
+                border:1px solid rgba(var(--hl-rgb),.3); border-right:none;
+                border-radius:8px 0 0 8px; box-shadow:-12px 0 32px rgba(0,0,0,.55);
+                backdrop-filter:blur(10px); cursor:grab; }
+  .roll-expand:active{ cursor:grabbing; }
+  .roll-expand canvas{ display:block; flex:0 0 auto; border-radius:2px; pointer-events:none;
+                       box-shadow:0 0 0 1px rgba(0,0,0,.4); }
+  .roll-expand .ex-empty{ color:var(--sub); font-size:12px; padding:0 8px; white-space:nowrap; }
 
   /* 底部:胶卷规格 + 台名 */
   .dock{ position:fixed; bottom:16px; left:0; right:var(--tray); z-index:6;
@@ -204,11 +209,8 @@
     .newroll{ margin:0 10px 0 0; width:60px; height:100%; padding:0;
               display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .rolls{ flex-direction:row; overflow-x:auto; overflow-y:hidden; padding:0; height:100%; gap:8px; }
-    .roll{ flex:0 0 auto; height:100%; display:flex; flex-direction:column; padding:6px; }
-    .roll-h{ margin-bottom:4px; padding:0 0 4px; }
-    .roll-thumbs{ flex-direction:row; flex:1 1 auto; overflow-x:auto; overflow-y:hidden; gap:6px; }
-    .thumb{ height:100%; width:auto; aspect-ratio:1; flex:0 0 auto; }
-    .roll-add{ aspect-ratio:1; height:100%; width:auto; }
+    .roll{ flex:0 0 auto; height:100%; flex-direction:row; padding:6px 8px; gap:6px; }
+    .roll-expand{ display:none !important; }   /* 触屏底部 tray 不做左侧展开预览 */
     .tray .empty{ margin:0; }
     .scene{ inset:0; bottom:120px; padding:50px 14px 116px; }
     .dock{ right:0; bottom:128px; }
@@ -248,6 +250,7 @@
     <div class="empty" id="trayEmpty">还没有胶卷<br>点上方新建一卷</div>
   </div>
 </aside>
+<div class="roll-expand" id="rollExpand"></div>
 <input id="file" type="file" accept="image/*" multiple hidden>
 
 <div class="dock">
@@ -388,7 +391,7 @@ function pieceLayout(piece){
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
   if(!shots || !shots.length) return null;
   const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
-  const fh = TH * (0.22 + ratio*0.34);   // 帧高随规格变;整体调小让胶片在台面上有更多留白
+  const fh = TH * (0.067 + ratio*0.103);   // 帧高随规格变;整体缩小使 135 在 lightbox 高度内可竖排约 7 条(BH≈214,TH/7≈214),台面留白更多
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基
   const m  = fh * 0.16;                  // 上下片基/齿孔区
@@ -865,28 +868,138 @@ function addFiles(list, roll){
   renderTray();
 }
 
-// —— 渲染候选区(按卷分组) ——
+// —— 默认胶圈态:用纯 Canvas 画「卷起的胶圈/胶卷盘」,零图片资源、零依赖 ——
+//   同心环(暖色 #e8dcc0 线条,内圈更亮)+ 暗盘底 + 中心留孔。
+function drawCoil(canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const size = 56;
+  canvas.width = size*dpr; canvas.height = size*dpr;
+  canvas.style.width = size+'px'; canvas.style.height = size+'px';
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,size,size);
+  const cx = size/2, cy = size/2, rOuter = size/2-3, rInner = 6.5;
+  // 盘底:暗棕实心盘
+  c.beginPath(); c.arc(cx,cy,rOuter,0,Math.PI*2);
+  c.fillStyle = 'rgba(34,29,22,.9)'; c.fill();
+  c.lineWidth = 1.4; c.strokeStyle = 'rgba(232,220,192,.55)'; c.stroke();
+  // 同心螺旋圈
+  c.lineCap = 'round';
+  const rings = 8;
+  for(let i=1;i<rings;i++){
+    const t = i/rings;                       // 0..1 由内到外
+    const r = rInner + t*(rOuter-rInner);
+    c.globalAlpha = 0.3 + 0.55*(1-t);        // 内圈更亮
+    c.lineWidth = 1.4;
+    c.strokeStyle = '#e8dcc0';
+    c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
+  }
+  c.globalAlpha = 1;
+  // 中心孔
+  c.beginPath(); c.arc(cx,cy,rInner-1.5,0,Math.PI*2);
+  c.fillStyle = '#15130f'; c.fill();
+  c.lineWidth = 1.4; c.strokeStyle = 'rgba(232,220,192,.85)'; c.stroke();
+}
+
+// —— 展开预览:把单帧 cover 裁切画进一个小 canvas(横画幅,高 80) ——
+function drawFrameThumb(canvas, img){
+  const dpr = window.devicePixelRatio || 1;
+  const h = 80, w = Math.round(h * 3/2);     // 预览统一用 3:2 横画幅
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.fillStyle = '#2a231a'; c.fillRect(0,0,w,h);              // 片基底
+  if(img && img.complete && img.naturalWidth){
+    const iw = img.naturalWidth, ih = img.naturalHeight, ia = iw/ih, fa = w/h;
+    let sx,sy,sw,sh;
+    if(ia > fa){ sh = ih; sw = ih*fa; sx = (iw-sw)/2; sy = 0; }
+    else       { sw = iw; sh = iw/fa; sx = 0; sy = (ih-sh)/2; }
+    c.drawImage(img, sx,sy,sw,sh, 0,0,w,h);
+  } else {
+    c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(0,0,w,h);   // 未载入占位
+  }
+}
+
+// —— hover 向左水平展开预览:singleton 展开条,绑定当前 hover 的卷 ——
+let expandRoll = null, expandHideTimer = null;
+function showExpand(roll, sec){
+  const wrap = $('#rollExpand');
+  expandRoll = roll;
+  wrap.innerHTML = '';
+  if(!roll.shots.length){
+    const e = document.createElement('div');
+    e.className = 'ex-empty'; e.textContent = '空卷 · 点 ＋ 导入照片';
+    wrap.appendChild(e);
+  } else {
+    roll.shots.forEach(sh=>{
+      const cv = document.createElement('canvas');
+      drawFrameThumb(cv, sh.img);
+      wrap.appendChild(cv);
+    });
+  }
+  wrap.style.display = 'flex';
+  // 与 roll-item 同 top 对齐,夹在视口内
+  const r = sec.getBoundingClientRect();
+  const eh = wrap.offsetHeight;
+  wrap.style.top = Math.max(6, Math.min(r.top, window.innerHeight - eh - 6)) + 'px';
+}
+function hideExpand(){
+  if(expandHideTimer){ clearTimeout(expandHideTimer); expandHideTimer = null; }
+  const wrap = $('#rollExpand');
+  wrap.style.display = 'none'; wrap.innerHTML = ''; expandRoll = null;
+}
+function scheduleHideExpand(){
+  if(expandHideTimer) clearTimeout(expandHideTimer);
+  expandHideTimer = setTimeout(hideExpand, 120);   // 留点余地,让指针能移进展开条
+}
+function cancelHideExpand(){ if(expandHideTimer){ clearTimeout(expandHideTimer); expandHideTimer = null; } }
+
+// —— 渲染候选区(按卷分组):默认胶圈态 ——
 function renderTray(){
   const wrap = $('#rolls');
   wrap.querySelectorAll('.roll').forEach(n=>n.remove());
   $('#trayEmpty').style.display = rolls.length ? 'none' : 'block';
+  // 当前展开卷可能已被删/改,重建后同步收起避免悬挂引用
+  if(expandRoll && !rolls.includes(expandRoll)) hideExpand();
   rolls.forEach(roll=>{
     const onDeck = pieces.some(pc=>String(pc.rollId)===String(roll.id));
     const sec = document.createElement('section');
     sec.className = 'roll' + (onDeck ? ' on' : '');
     sec.dataset.r = roll.id;
-    let thumbs = '';
-    roll.shots.forEach((s,i)=>{
-      thumbs += `<div class="thumb" data-r="${roll.id}" data-i="${i}"><img src="${s.url}" alt=""><button class="del" title="移除">×</button></div>`;
-    });
+    sec.title = '按住拖到台面 = 放这卷 · hover 预览各帧';
     sec.innerHTML =
-      `<header class="roll-h" title="按住拖到台面 = 放这卷">`+
-        `<span class="roll-name">${roll.name}</span>`+
-        `<span class="roll-count">${roll.shots.length}</span>`+
+      `<canvas class="coil"></canvas>`+
+      `<div class="roll-meta">`+
+        `<div class="roll-name">${roll.name}</div>`+
+        `<div class="roll-count">${roll.shots.length} 张</div>`+
+      `</div>`+
+      `<div class="roll-btns">`+
+        `<button class="roll-add" title="加照片进这卷">＋</button>`+
         `<button class="roll-del" title="删除整卷">×</button>`+
-      `</header>`+
-      `<div class="roll-thumbs">${thumbs}<div class="roll-add" title="加照片进这卷">＋</div></div>`;
+      `</div>`;
+    drawCoil(sec.querySelector('.coil'));
+    sec.addEventListener('mouseenter', ()=>{ cancelHideExpand(); showExpand(roll, sec); });
+    sec.addEventListener('mouseleave', scheduleHideExpand);
     wrap.appendChild(sec);
+  });
+}
+
+// 展开条本身的 hover/拖拽:停留其上不收起;pointerdown 仍抓整卷拖到台面
+{
+  const ex = $('#rollExpand');
+  ex.addEventListener('mouseenter', cancelHideExpand);
+  ex.addEventListener('mouseleave', scheduleHideExpand);
+  ex.addEventListener('pointerdown', e=>{
+    if(e.button) return;
+    const roll = expandRoll;
+    if(!roll || !roll.shots.length) return;     // 空卷无照片,建不了 piece
+    e.preventDefault();
+    const s = deckScale(), r = deckRect();
+    const nx = (e.clientX - r.left)/s, ny = (e.clientY - r.top)/s;
+    hideExpand();
+    const piece = addPiece(roll, nx, ny);        // 整卷,沿用现有机制
+    if(piece) startPieceDrag(piece, e, true);     // 立刻跟手
   });
 }
 
@@ -959,6 +1072,7 @@ rollsEl.addEventListener('pointerdown', e=>{
   const roll = rollById(sec.dataset.r);
   if(!roll || !roll.shots.length) return;     // 空卷没照片,建不了 piece
   e.preventDefault();
+  hideExpand();                                  // 抓整卷出发 -> 收起 hover 预览
   const s = deckScale(), r = deckRect();
   const nx = (e.clientX - r.left)/s, ny = (e.clientY - r.top)/s;  // 光标处 nominal
   const piece = addPiece(roll, nx, ny);        // 立刻生成并以中心对齐光标
