@@ -6,8 +6,9 @@ import { render } from './render';
 import { positionCutBtn, positionFrameBar } from './frames';
 
 // —— 观片台:硬编码单台 = 专业观片台(不再有切换/多预设) ——
-const DECK = { name:'专业观片台', frame:'pro', base:'#ffffff', unif:0, pixel:0, plate:'FILMSCAN PRO' };
-let p: any = {...DECK};
+interface Deck { name: string; frame: string; base: string; unif: number; pixel: number; plate: string }
+const DECK: Deck = { name:'专业观片台', frame:'pro', base:'#ffffff', unif:0, pixel:0, plate:'FILMSCAN PRO' };
+let p: Deck = {...DECK};
 
 // —— 硬编码单台:套用专业观片台的机身/铭牌/台名,并渲染 ——
 export function applyDeck(){
@@ -24,7 +25,7 @@ export function applyDeck(){
 // —— 台面占位/保存按钮状态 ——
 export function updatePlaceholder(){
   $('#placeholder').style.display = pieces.length ? 'none' : '';
-  $('#save').disabled = !pieces.length;
+  $<HTMLButtonElement>('#save').disabled = !pieces.length;
 }
 
 // —— piece 的 CSS 布局:piece.x/y 是相对观片台屏幕左上角的 nominal,定位 = 观片台屏幕矩形 + x*s ——

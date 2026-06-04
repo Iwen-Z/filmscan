@@ -36,5 +36,5 @@ export function setRadius(v: number) { radius = v; }
 export let filmIdx = 1;               // 画幅规格,默认 135
 export function setFilmIdx(v: number) { filmIdx = v; }
 
-export const rollById = (id: any): Roll | undefined =>
+export const rollById = (id: string | number | undefined): Roll | undefined =>
   rolls.find(r => String(r.id) === String(id));

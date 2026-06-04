@@ -2,6 +2,7 @@
 //   业务逻辑全部下沉到 types/state/render/deck/pieces/frames/rolls/tray/presets;
 //   本文件只做接线,不含任何业务函数体。
 import './styles.css';
+import type { FilmType } from './types';
 import { $, screen, tray, films, deckScale, ui } from './core';
 import { pieces, filmIdx, rollById, setImportTarget, setGlow, setRadius } from './state';
 import { render } from './render';
@@ -32,23 +33,24 @@ films.forEach((f,i)=>{
 // 新建卷:点「＋」展开胶片类型三选一,选一类即建空卷(默认反转,不自动上台)
 const newRollPanel = $('#newRollPanel');
 $('#newRoll').onclick = ()=>{ newRollPanel.hidden = !newRollPanel.hidden; };
-newRollPanel.addEventListener('click', (e: any)=>{
-  const t = e.target.dataset.t; if(!t) return;
-  newRoll(t);
+newRollPanel.addEventListener('click', (e: MouseEvent)=>{
+  const t = (e.target as HTMLElement).dataset.t; if(!t) return;
+  newRoll(t as FilmType);
   newRollPanel.hidden = true;
 });
-const file = $('#file');
+const file = $<HTMLInputElement>('#file');
 $('#placeholder').onclick = ()=>{ setImportTarget(newRoll()); file.click(); };  // 引导:新建卷并导入(默认反转)
-file.onchange = (e: any) => { addFiles(e.target.files); file.value=''; };
+file.onchange = () => { if(file.files) addFiles(file.files); file.value=''; };
 
 // —— 候选区(按卷):卷头 pointerdown 拖出即跟随 / 删除 / 卷内＋导入 ——
 const rollsEl = $('#rolls');
-rollsEl.addEventListener('pointerdown', (e: any)=>{
+rollsEl.addEventListener('pointerdown', (e: PointerEvent)=>{
   if(e.button) return;
+  const t = e.target as HTMLElement;
   // 功能按钮(删整卷/导入/删单张/切类型)各自的 click 优先,不起拖
-  if(e.target.closest('.roll-del') || e.target.closest('.roll-add')
-     || e.target.closest('.roll-type') || e.target.closest('.del')) return;
-  const sec = e.target.closest('.roll'); if(!sec) return;   // 卡片任意处(含缩略图)都能抓整卷
+  if(t.closest('.roll-del') || t.closest('.roll-add')
+     || t.closest('.roll-type') || t.closest('.del')) return;
+  const sec = t.closest('.roll') as HTMLElement | null; if(!sec) return;   // 卡片任意处(含缩略图)都能抓整卷
   const roll = rollById(sec.dataset.r);
   if(!roll || !roll.shots.length) return;     // 空卷没照片,建不了 piece
   e.preventDefault();
@@ -58,56 +60,59 @@ rollsEl.addEventListener('pointerdown', (e: any)=>{
   const piece = addPiece(roll, nx, ny);        // 立刻生成并以中心对齐光标
   if(piece) startPieceDrag(piece, e, true);     // 立刻跟手
 });
-rollsEl.addEventListener('click', (e: any)=>{
-  const sec = e.target.closest('.roll'); if(!sec) return;
+rollsEl.addEventListener('click', (e: MouseEvent)=>{
+  const t = e.target as HTMLElement;
+  const sec = t.closest('.roll') as HTMLElement | null; if(!sec) return;
   const roll = rollById(sec.dataset.r); if(!roll) return;
-  if(e.target.classList.contains('roll-del')){ deleteRoll(roll); return; }
-  if(e.target.classList.contains('roll-add')){ setImportTarget(roll); file.click(); return; }
-  if(e.target.classList.contains('roll-type')){ cycleRollType(roll); return; }
-  const th = e.target.closest('.thumb');
-  if(th && e.target.classList.contains('del')){ removeShot(roll, +th.dataset.i); return; }
+  if(t.classList.contains('roll-del')){ deleteRoll(roll); return; }
+  if(t.classList.contains('roll-add')){ setImportTarget(roll); file.click(); return; }
+  if(t.classList.contains('roll-type')){ cycleRollType(roll); return; }
+  const th = t.closest('.thumb') as HTMLElement | null;
+  if(th && t.classList.contains('del')){ removeShot(roll, +th.dataset.i!); return; }
 });
-rollsEl.addEventListener('dragstart', (e: any)=>{
-  const th = e.target.closest('.thumb');
-  if(th){ e.dataTransfer.setData('text/fs-thumb', th.dataset.r+':'+th.dataset.i); e.dataTransfer.effectAllowed='copyMove'; }
+rollsEl.addEventListener('dragstart', (e: DragEvent)=>{
+  const th = (e.target as HTMLElement).closest('.thumb') as HTMLElement | null;
+  if(th && e.dataTransfer){ e.dataTransfer.setData('text/fs-thumb', th.dataset.r+':'+th.dataset.i); e.dataTransfer.effectAllowed='copyMove'; }
 });
 // 卷作为放置目标:把照片拖进这卷 / 外部文件导入这卷
-rollsEl.addEventListener('dragover', (e: any)=>{
-  const sec = e.target.closest('.roll'); if(!sec) return;
+rollsEl.addEventListener('dragover', (e: DragEvent)=>{
+  const sec = (e.target as HTMLElement).closest('.roll'); if(!sec || !e.dataTransfer) return;
   if(e.dataTransfer.types.includes('text/fs-thumb') || e.dataTransfer.types.includes('Files')){
     e.preventDefault(); sec.classList.add('drop-on');
   }
 });
-rollsEl.addEventListener('dragleave', (e: any)=>{
-  const sec = e.target.closest('.roll'); if(sec && !sec.contains(e.relatedTarget)) sec.classList.remove('drop-on');
+rollsEl.addEventListener('dragleave', (e: DragEvent)=>{
+  const sec = (e.target as HTMLElement).closest('.roll'); if(sec && !sec.contains(e.relatedTarget as Node)) sec.classList.remove('drop-on');
 });
-rollsEl.addEventListener('drop', (e: any)=>{
-  const sec = e.target.closest('.roll'); if(!sec) return;
+rollsEl.addEventListener('drop', (e: DragEvent)=>{
+  const sec = (e.target as HTMLElement).closest('.roll') as HTMLElement | null; if(!sec) return;
   sec.classList.remove('drop-on');
-  const roll = rollById(sec.dataset.r); if(!roll) return;
+  const roll = rollById(sec.dataset.r); if(!roll || !e.dataTransfer) return;
   const td = e.dataTransfer.getData('text/fs-thumb');
   if(td){ e.preventDefault(); moveShot(td, roll); return; }
   if(e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files, roll); }
 });
 
 // —— 台面:仅接收外部 OS 文件(落台/移动 piece 已 pointer 化) ——
-['dragover','dragenter'].forEach(ev=>screen.addEventListener(ev,(e: any)=>{
-  if(!e.dataTransfer.types.includes('Files')) return;
-  e.preventDefault(); screen.classList.add('drag-on'); e.dataTransfer.dropEffect='copy';
+['dragover','dragenter'].forEach(ev=>screen.addEventListener(ev,(e: Event)=>{
+  const dt = (e as DragEvent).dataTransfer;
+  if(!dt || !dt.types.includes('Files')) return;
+  e.preventDefault(); screen.classList.add('drag-on'); dt.dropEffect='copy';
 }));
-['dragleave','dragend'].forEach(ev=>screen.addEventListener(ev,(e: any)=>screen.classList.remove('drag-on')));
-screen.addEventListener('drop', (e: any)=>{
+['dragleave','dragend'].forEach(ev=>screen.addEventListener(ev,()=>screen.classList.remove('drag-on')));
+screen.addEventListener('drop', (e: DragEvent)=>{
   screen.classList.remove('drag-on');
-  if(e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files); }   // 外部文件 -> 进卷
+  if(e.dataTransfer && e.dataTransfer.files.length){ e.preventDefault(); addFiles(e.dataTransfer.files); }   // 外部文件 -> 进卷
 });
 
 // 候选区:外部文件拖到卷以外的空白处=进默认卷
-['dragover','dragenter'].forEach(ev=>tray.addEventListener(ev,(e: any)=>{
-  if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); tray.classList.add('drag-on'); }
+['dragover','dragenter'].forEach(ev=>tray.addEventListener(ev,(e: Event)=>{
+  const dt = (e as DragEvent).dataTransfer;
+  if(dt && dt.types.includes('Files')){ e.preventDefault(); tray.classList.add('drag-on'); }
 }));
-['dragleave','drop'].forEach(ev=>tray.addEventListener(ev,(e: any)=>tray.classList.remove('drag-on')));
-tray.addEventListener('drop', (e: any)=>{
-  if(e.dataTransfer.files.length && !e.target.closest('.roll')){ e.preventDefault(); addFiles(e.dataTransfer.files); }
+['dragleave','drop'].forEach(ev=>tray.addEventListener(ev,()=>tray.classList.remove('drag-on')));
+tray.addEventListener('drop', (e: DragEvent)=>{
+  if(e.dataTransfer && e.dataTransfer.files.length && !(e.target as HTMLElement).closest('.roll')){ e.preventDefault(); addFiles(e.dataTransfer.files); }
 });
 
 // 展开条本身的 hover/拖拽:停留其上不收起;pointerdown 仍抓整卷拖到台面
@@ -115,7 +120,7 @@ tray.addEventListener('drop', (e: any)=>{
   const ex = $('#rollExpand');
   ex.addEventListener('mouseenter', cancelHideExpand);
   ex.addEventListener('mouseleave', scheduleHideExpand);
-  ex.addEventListener('pointerdown', (e: any)=>{
+  ex.addEventListener('pointerdown', (e: PointerEvent)=>{
     if(e.button) return;
     const roll = expandRoll;
     if(!roll || !roll.shots.length) return;     // 空卷无照片,建不了 piece
@@ -136,22 +141,24 @@ window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('pointerup', endPieceDrag);
 window.addEventListener('pointercancel', endPieceDrag);
 // 点击 piece / 剪下按钮 / 边框工具条以外的任何地方 = 取消选帧
-window.addEventListener('pointerdown', (e: any)=>{
-  if(e.target.closest('.piece') || e.target.closest('.cut-btn') || e.target.closest('.frame-bar')) return;
+window.addEventListener('pointerdown', (e: PointerEvent)=>{
+  const t = e.target as HTMLElement;
+  if(t.closest('.piece') || t.closest('.cut-btn') || t.closest('.frame-bar')) return;
   clearSelection(); closeFrameBar();
 });
 
 // 滑块
-for(const k in ui) ui[k].oninput = () => {
+(Object.keys(ui) as (keyof typeof ui)[]).forEach(k => { ui[k].oninput = () => {
   setGlow(+ui.glow.value);        // 背光亮度(只调观片台面板,见 renderBg)
   setRadius(+ui.radius.value);    // 底片圆角(胶片属性)
   syncLabels(); render();
-};
-$('#fmt').onclick = (e: any) => {
-  if(!e.target.dataset.f) return;
-  setFmt(e.target.dataset.f);
+}; });
+$('#fmt').onclick = (e: MouseEvent) => {
+  const t = e.target as HTMLElement;
+  if(!t.dataset.f) return;
+  setFmt(t.dataset.f);
   document.querySelectorAll('#fmt button').forEach(b=>b.classList.remove('on'));
-  e.target.classList.add('on');
+  t.classList.add('on');
 };
 $('#save').onclick = save;
 

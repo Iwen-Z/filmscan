@@ -1,17 +1,17 @@
 // —— 选帧/剪下/边框样式工具条域 ——
 import type { Piece } from './types';
-import { $, deckScale } from './core';
+import { deckScale } from './core';
 import { selected, setSelected, pieces, rollById } from './state';
-import { pieceLayout, renderPiece } from './render';
+import { pieceLayout, renderPiece, type PieceLayout } from './render';
 import { layoutPieceEl } from './deck';
 import { addPiece } from './pieces';
 
 // 边框样式:旧 piece 无该字段时按 film 处理(向后兼容)
-export function pieceFrameStyle(piece: any){ return (piece && piece.frameStyle) || 'film'; }
+export function pieceFrameStyle(piece: Piece): string { return piece.frameStyle || 'film'; }
 
 // —— 阶段2:按帧选中 + 剪下成独立单张 ——
 // 命中检测:把视口坐标换回 piece 局部 nominal,落在哪一帧返回其索引,否则 -1
-export function frameAt(piece: Piece, clientX: number, clientY: number, L?: any){
+export function frameAt(piece: Piece, clientX: number, clientY: number, L?: PieceLayout | null){
   L = L || pieceLayout(piece); if(!L) return -1;
   const s = deckScale();
   const elLeft = parseFloat(piece.el.style.left), elTop = parseFloat(piece.el.style.top);
@@ -23,13 +23,13 @@ export function frameAt(piece: Piece, clientX: number, clientY: number, L?: any)
   }
   return -1;
 }
-let cutBtn: any = null;
-export function ensureCutBtn(){
+let cutBtn: HTMLButtonElement | null = null;
+export function ensureCutBtn(): HTMLButtonElement {
   if(cutBtn) return cutBtn;
   cutBtn = document.createElement('button');
   cutBtn.className = 'cut-btn'; cutBtn.textContent = '✂ 剪下';
   cutBtn.title = '把这一帧剪成独立单张(原长条非破坏保留)';
-  cutBtn.addEventListener('click', (e: any)=>{ e.stopPropagation(); cutSelected(); });
+  cutBtn.addEventListener('click', (e: MouseEvent)=>{ e.stopPropagation(); cutSelected(); });
   document.body.appendChild(cutBtn);
   return cutBtn;
 }
@@ -83,21 +83,22 @@ export function cutSelected(){
 }
 
 // —— 阶段3:单张胶片边框样式工具条(none / film / polaroid)——
-let frameBar: any = null;
+let frameBar: HTMLDivElement | null = null;
 export let frameTarget: Piece | null = null;
 const FRAME_OPTS: [string, string][] = [['none','无边框'],['film','胶片'],['polaroid','拍立得']];
-export function ensureFrameBar(){
+export function ensureFrameBar(): HTMLDivElement {
   if(frameBar) return frameBar;
-  frameBar = document.createElement('div');
-  frameBar.className = 'frame-bar';
+  const bar = document.createElement('div');
+  bar.className = 'frame-bar';
   FRAME_OPTS.forEach(([v,label])=>{
     const b = document.createElement('button');
     b.className = 'frame-opt'; b.dataset.v = v; b.textContent = label;
-    b.addEventListener('click', (e: any)=>{ e.stopPropagation(); if(frameTarget) setFrameStyle(frameTarget, v); });
-    frameBar.appendChild(b);
+    b.addEventListener('click', (e: MouseEvent)=>{ e.stopPropagation(); if(frameTarget) setFrameStyle(frameTarget, v); });
+    bar.appendChild(b);
   });
-  document.body.appendChild(frameBar);
-  return frameBar;
+  document.body.appendChild(bar);
+  frameBar = bar;
+  return bar;
 }
 export function toggleFrameBar(piece: Piece){
   if(frameTarget===piece){ closeFrameBar(); return; }   // 再点同片 = 收起
@@ -118,7 +119,7 @@ export function positionFrameBar(){
   const bar = ensureFrameBar();
   bar.style.display = '';
   const cur = pieceFrameStyle(frameTarget);
-  bar.querySelectorAll('.frame-opt').forEach((b: any)=> b.classList.toggle('on', b.dataset.v===cur));
+  bar.querySelectorAll<HTMLButtonElement>('.frame-opt').forEach(b=> b.classList.toggle('on', b.dataset.v===cur));
   const s = deckScale();
   const elLeft = parseFloat(frameTarget.el.style.left), elTop = parseFloat(frameTarget.el.style.top);
   bar.style.left = (elLeft + frameTarget.canvas.width*s/2) + 'px';

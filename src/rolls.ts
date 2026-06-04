@@ -44,12 +44,12 @@ export function moveShot(tdata: string, target: Roll){
 }
 
 // —— 导入照片进某卷 ——
-export function addFiles(list: any, roll?: Roll | null){
-  const imgs = [...list].filter((f: any)=>f.type.startsWith('image/'));
+export function addFiles(list: FileList, roll?: Roll | null){
+  const imgs = [...list].filter((f: File)=>f.type.startsWith('image/'));
   if(!imgs.length) return;
   const dest = roll || importTarget || (rolls.length ? rolls[rolls.length-1] : newRoll());
   setImportTarget(null);
-  imgs.forEach((f: any)=>{
+  imgs.forEach((f: File)=>{
     const url = URL.createObjectURL(f);
     const im = new Image();
     const shot = { url, img:im };

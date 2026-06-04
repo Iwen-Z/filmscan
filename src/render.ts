@@ -1,8 +1,19 @@
 // —— 渲染域:发光台面层 + 各 frameStyle 的 piece canvas 绘制 ——
-import { rollFilmType, type Piece } from './types';
+import { rollFilmType, type Piece, type Roll, type Shot } from './types';
 import { bg, bctx, TW, TH, films, deckScale } from './core';
 import { glow, radius, filmIdx, selected, pieces, rollById } from './state';
 import { pieceFrameStyle } from './frames';
+
+// —— 胶卷条几何的解算结果(pieceLayout 返回)——
+export interface PieceLayout {
+  roll: Roll | undefined;
+  shots: Shot[];
+  ratio: number; aspect: number;
+  fh: number; fw: number; g: number; m: number;
+  BH: number; N: number; CW: number; pad: number; stripW: number;
+  originX: number; bandTop: number; framesY: number;
+  cw: number; ch: number;
+}
 
 export function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number){
   r = Math.max(0, Math.min(r, w/2, h/2));
@@ -27,7 +38,9 @@ export function renderBg(){
 
 // cover 裁切单帧画到 (fx,fy,fw,fh)。照片是不透明乳剂,始终 WYSIWYG,背光不改其明暗。
 //   (lightbox 形参保留以兼容既有调用点,不再用于提亮)
-function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
+function drawPhotoCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement | undefined,
+                       fx: number, fy: number, fw: number, fh: number,
+                       rad: number, far: number, lightbox: boolean){
   if(!img || !img.complete || !img.naturalWidth) return;
   const iw = img.naturalWidth, ih = img.naturalHeight, ia = iw/ih;
   let sx,sy,sw,sh;
@@ -41,7 +54,7 @@ function drawPhotoCover(ctx, img, fx, fy, fw, fh, rad, far, lightbox){
 
 // —— 胶卷条几何:把某个 piece 所属卷的若干帧横排在该 piece 的局部画布上 ——
 //   坐标全部在该 piece 的 canvas 局部坐标系,band 整体偏移 PAD(给 glow 留边)
-export function pieceLayout(piece: Piece){
+export function pieceLayout(piece: Piece): PieceLayout | null {
   const roll = rollById(piece.rollId);
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
   if(!shots || !shots.length) return null;

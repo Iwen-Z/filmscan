@@ -1,21 +1,22 @@
 // —— 共享内核:DOM 取用器、台面常量、几何换算、纯工具 ——
 //   无业务逻辑;被所有业务模块 import。
 
-export const $ = (s: string): any => document.querySelector(s);
+// querySelector 包装:T 默认 HTMLElement;命中即非空,故 as T 收窄(DOM 静态契约,缺元素是 bug 非常态)
+export const $ = <T extends Element = HTMLElement>(s: string): T => document.querySelector(s) as T;
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 // 台面画布分辨率(4:3),导出尺寸
 export const TW = 2000, TH = 1500;
 
-export const bg: any = $('#bg');
-export const bctx: any = bg.getContext('2d');
+export const bg: HTMLCanvasElement = $<HTMLCanvasElement>('#bg');
+export const bctx: CanvasRenderingContext2D = bg.getContext('2d')!;
 bg.width = TW; bg.height = TH;
 
 // 观片台屏幕元素(注意:在本项目里遮蔽全局 window.screen)
-export const screen: any = $('#screen');
-export const tray: any = $('#tray');
+export const screen: HTMLElement = $('#screen');
+export const tray: HTMLElement = $('#tray');
 
-export const ui  = { glow: $('#glow'),  radius: $('#radius') };
+export const ui  = { glow: $<HTMLInputElement>('#glow'),  radius: $<HTMLInputElement>('#radius') };
 export const out = { glow: $('#vGlow'), radius: $('#vRadius') };
 
 // nominal px -> CSS px

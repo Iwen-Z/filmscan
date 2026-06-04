@@ -7,14 +7,14 @@ import { addPiece, removePiece, startPieceDrag } from './pieces';
 import { layoutPieceEl, centerPieceAt } from './deck';
 import { pieceLayout, renderPiece } from './render';
 import { setSelection, cutSelected, pieceFrameStyle, setFrameStyle } from './frames';
-import { rollFilmType } from './types';
+import { rollFilmType, type Roll } from './types';
 
-const T: [string, boolean][] = [], ok = (n: string, c: any)=>T.push([n,!!c]);
+const T: [string, boolean][] = [], ok = (n: string, c: unknown)=>T.push([n,!!c]);
 const r = newRoll();
 const im = new Image();
 im.onload = ()=>{
   r.shots.push({ url:im.src, img:im });
-  const p1: any = addPiece(r, 600, 700);
+  const p1 = addPiece(r, 600, 700)!;
   ok('①拿卷立刻有 piece(addPiece 返回非空且长度+1)', !!p1 && pieces.length===1);
   ok('piece 有 canvas 且已渲染', p1 && p1.canvas.width>0 && p1.canvas.height>0);
   ok('占位已隐藏', $('#placeholder').style.display==='none');
@@ -26,7 +26,7 @@ im.onload = ()=>{
      near(parseFloat(p1.el.style.top),  rc.top  + p1.y*s));
   ok('④无 .piece-grip 把手 / canvas 上有起拖逻辑',
      !p1.el.querySelector('.piece-grip') && typeof startPieceDrag==='function');
-  const p2: any = addPiece(r, 1200, 700);
+  const p2 = addPiece(r, 1200, 700)!;
   ok('可摆第二片(同卷多片)', pieces.length===2);
   ok('第二片 z 更高', p2.z>p1.z);
   const bx = p1.x; p1.x += 120; layoutPieceEl(p1);
@@ -62,13 +62,13 @@ im.onload = ()=>{
   // —— 阶段2:按帧剪出单张 ——
   const r3 = newRoll();
   r3.shots.push({url:im.src,img:im},{url:im.src,img:im},{url:im.src,img:im});  // 3 帧长条
-  const strip: any = addPiece(r3, 1000, 400);
+  const strip = addPiece(r3, 1000, 400)!;
   ok('长条 piece N=3', pieceLayout(strip)!.N===3);
   setSelection(strip, 1);
   ok('选中帧后有选区(selected 指向该 piece+帧)',
      selected && selected.piece===strip && selected.idx===1);
   const before = pieces.length;
-  const single: any = cutSelected();
+  const single = cutSelected()!;
   ok('剪下生成独立单张 piece(数量+1)', pieces.length===before+1 && !!single);
   ok('单张 = N=1 piece(shots 长度 1,复用逐帧渲染)',
      single && single.shots && single.shots.length===1 && single.canvas.width>0);
@@ -88,7 +88,7 @@ im.onload = ()=>{
      single.frameStyle==='polaroid' && wPol>wNone && hPol>hNone);
   ok('polaroid 底部白边更宽(高度增量 > 宽度增量)', (hPol-hNone) > (wPol-wNone));
   // 向后兼容:旧 piece 无 frameStyle 字段时按 film 处理且能渲染
-  const legacy: any = addPiece(r3, 800, 800, [r3.shots[0]]);
+  const legacy = addPiece(r3, 800, 800, [r3.shots[0]])!;
   delete legacy.frameStyle;
   renderPiece(legacy);
   ok('旧 piece 无 frameStyle 字段按 film 处理',
@@ -100,10 +100,10 @@ im.onload = ()=>{
   ok('新建卷默认 filmType=reversal', r.filmType==='reversal' && rollFilmType(r)==='reversal');
   const rNeg = newRoll('negative');
   ok('newRoll(negative) 设置 filmType', rNeg.filmType==='negative');
-  const rLegacy = newRoll(); delete (rLegacy as any).filmType;
+  const rLegacy = newRoll(); delete (rLegacy as Partial<Roll>).filmType;
   ok('旧卷无 filmType 字段按 reversal 向后兼容', rollFilmType(rLegacy)==='reversal');
   rNeg.shots.push({url:im.src,img:im});
-  const pNeg: any = addPiece(rNeg, 700, 900);
+  const pNeg = addPiece(rNeg, 700, 900)!;
   ok('负片卷 piece 正常渲染(canvas 有效)', !!pNeg && pNeg.canvas.width>0 && pNeg.canvas.height>0);
   cycleRollType(rNeg);   // negative -> reversal,该卷 piece 实时重渲
   ok('切类型循环并落到 roll(negative->reversal)', rNeg.filmType==='reversal' && pNeg.canvas.width>0);
