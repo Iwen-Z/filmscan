@@ -3,6 +3,7 @@
 > 背景：`index.html`（单文件、原生 HTML/CSS/Canvas、零依赖）已能在观片台上自由摆放胶卷 piece、剪单张、切边框（none/film/polaroid，PR #4）。本 spec 收口「让胶片看起来更像真实底片」这一组拟真需求。
 > 约束：**保持纯原生、零依赖、单文件 `index.html`**，不引入框架/构建链。复用现有 `renderPieceFilm` 的片基+齿孔+逐帧 cover+透光逻辑、`presets[]` 观片台模型、`?selftest` 自检 harness。
 > 路线决定（已更新 2026-06-04）：~~只走正片~~ **改为 per-roll 卷类型**——新建卷可选 反转/黑白/负片，负片=反相+橙罩（详见 `REVAMP_SPEC.md` 阶段 D）。本文档的逐帧拟真（暗角/halation/漏光等）对三种类型**一视同仁**，都作用在画面/镜头层，不区分卷类型。
+> ⚠️ 负片锁已由 REVAMP_SPEC.md 阶段D解除；负片作为 filmType=negative 的 per-roll 选项重新支持。暗角/halation/漏光等拟真效果对三种 filmType 一视同仁。
 
 ## 心智模型（物理真相，先纠一个被拧反的概念）
 

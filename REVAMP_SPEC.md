@@ -66,3 +66,9 @@
 - 顺序 **A→B→C→D**，各一条 `ginger dev`、各独立 PR、**严格串行**（同文件同路径，并行撞合并）。
 - 全部建立在 PR #5 合并之后。
 - 阶段 D 落地后，需同步更新 `REALISM_SPEC.md`：负片锁已解除；暗角/halation/漏光等逐帧拟真**对三种 filmType 一视同仁**（都作用在画面/镜头层，不区分卷类型）。
+
+---
+
+## 负片锁已解除（阶段 D 落地记录，2026-06-04）
+
+阶段 D 已实现：新建卷内联面板三选一（反转/黑白/负片，默认反转）、roll 增 `filmType` 字段（旧卷无字段按 `roll.filmType || 'reversal'` 向后兼容）、`renderPieceFilm` 逐帧按类型渲染（reversal 原样 / bw 灰度 / negative 反相+C-41 橙罩，且负片片基改橙）、tray 卡片内 `.roll-type` 一键循环切类型并实时重渲该卷所有 piece。**`REALISM_SPEC.md` 原「只走正片」锁正式解除**——负片作为 `filmType=negative` 的 per-roll 选项重新支持；暗角/halation/漏光等逐帧拟真对三种 filmType 一视同仁。

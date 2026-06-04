@@ -118,6 +118,13 @@
             color:var(--sub); font-size:12px; line-height:1.5; transition:.15s; }
   .newroll:hover, .tray.drag-on .newroll{ border-color:var(--hl); color:var(--hl); }
   .newroll b{ display:block; font-size:20px; font-weight:400; color:inherit; }
+  /* 新建卷:点「＋」后内联弹出的胶片类型三选一(纯原生,零依赖) */
+  .newroll-panel{ flex:0 0 auto; margin:-6px 14px 12px; display:flex; gap:5px; }
+  .newroll-panel[hidden]{ display:none; }
+  .newroll-panel button{ flex:1 1 0; font:inherit; font-size:11px; cursor:pointer; padding:7px 0;
+          border:1px solid var(--line); border-radius:6px; background:rgba(255,255,255,.03);
+          color:var(--sub); transition:.15s; }
+  .newroll-panel button:hover{ border-color:var(--hl); color:var(--hl); }
   .rolls{ flex:1 1 auto; overflow-y:auto; padding:0 10px 8px;
           display:flex; flex-direction:column; gap:12px; }
   /* 默认胶圈态:每卷一张紧凑的「卷起的胶圈」小图 + 名称/张数 + ＋/× 按钮 */
@@ -133,6 +140,11 @@
   .roll-name{ font-size:12px; color:var(--ink); font-weight:600;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roll-count{ font-size:10px; color:var(--sub); margin-top:3px; }
+  /* 卷内切换胶片类型:点一下循环 反转->黑白->负片,该卷所有 piece 实时重渲 */
+  .roll-type{ display:inline-block; margin-top:5px; font:inherit; font-size:10px; line-height:1;
+              cursor:pointer; padding:3px 8px; border-radius:10px; border:1px solid var(--line);
+              background:rgba(255,255,255,.04); color:var(--sub); transition:.15s; }
+  .roll-type:hover{ border-color:var(--hl); color:var(--hl); }
   .roll-btns{ flex:0 0 auto; display:flex; flex-direction:column; gap:5px; }
   .roll-add, .roll-del{ width:22px; height:22px; padding:0; border-radius:50%; cursor:pointer;
               border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--sub);
@@ -246,6 +258,11 @@
 
 <aside class="tray" id="tray">
   <div class="newroll" id="newRoll"><b>＋</b>新建卷</div>
+  <div class="newroll-panel" id="newRollPanel" hidden>
+    <button data-t="reversal">反转</button>
+    <button data-t="bw">黑白</button>
+    <button data-t="negative">负片</button>
+  </div>
   <div class="rolls" id="rolls">
     <div class="empty" id="trayEmpty">还没有胶卷<br>点上方新建一卷</div>
   </div>
@@ -302,11 +319,21 @@ const bg = $('#bg'), bctx = bg.getContext('2d');
 let fmt = 'jpg';
 
 // —— 胶卷:每卷一组照片 ——
-let rolls = [];          // [{ id, name, shots:[{url,img}] }]
+let rolls = [];          // [{ id, name, shots:[{url,img}], filmType }]
 let nextId = 1;
 let importTarget = null; // 下一次导入的目标卷(点某卷的「＋」时设置)
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const rollById = id => rolls.find(r => String(r.id) === String(id));
+
+// —— 胶片类型(per-roll):反转(正片现状) / 黑白(灰度) / 负片(反相+C-41 橙罩) ——
+//   旧 roll 无 filmType 字段 -> 按 'reversal' 向后兼容(见 rollFilmType)。
+const FILM_TYPES = [
+  { v:'reversal', label:'反转' },
+  { v:'bw',       label:'黑白' },
+  { v:'negative', label:'负片' },
+];
+const rollFilmType = roll => (roll && roll.filmType) || 'reversal';
+const filmTypeLabel = v => (FILM_TYPES.find(t=>t.v===v) || FILM_TYPES[0]).label;
 
 // —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——
 //   piece.shots = null   -> 渲染所属卷的全部帧(长条)
@@ -474,6 +501,7 @@ function renderPieceFilm(piece){
   const { shots, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
   const rad = Math.round(Math.min(fw,fh) * radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
+  const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 逐帧画面处理
 
   // 1) 片基(恒定半透明暗棕胶卷带)+ 齿孔真镂空
   //    关键:片基 alpha 固定半透明,不随任何滑杆变。底下是什么就透出什么:
@@ -483,7 +511,9 @@ function renderPieceFilm(piece){
   const EDGE_ALPHA = 0.3;                     // 长边渐隐透光,同样恒定
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
-  ctx.fillStyle = 'rgba(38,31,23,'+BASE_ALPHA+')';
+  // 片基色:反转/黑白 = 现状清透灰暗棕;负片 = 橙色(C-41 片基),都保持半透明让背光透上来
+  const baseRGB = filmType==='negative' ? '180,90,30' : '38,31,23';
+  ctx.fillStyle = 'rgba('+baseRGB+','+BASE_ALPHA+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
   // destination-out:把齿孔位置的片基像素清成全透明(真镂空)
   ctx.globalCompositeOperation = 'destination-out';
@@ -518,7 +548,17 @@ function renderPieceFilm(piece){
     else        { sw = iw; sh = iw/far; sx = 0; sy = (ih-sh)/2; }
     ctx.save();
     rr(ctx, fx, framesY, fw, fh, rad); ctx.clip();
+    // 按 filmType 处理画面:reversal 原样;bw 灰度;negative 反相 + 橙罩(C-41 观感)
+    if(filmType==='bw')            ctx.filter = 'grayscale(1)';
+    else if(filmType==='negative') ctx.filter = 'invert(1)';
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
+    ctx.filter = 'none';
+    if(filmType==='negative'){     // 叠橙色蒙版(C-41 橙罩),clip 内只染本帧
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = 'rgba(200,100,30,1)';
+      ctx.fillRect(fx, framesY, fw, fh);
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   });
 
@@ -821,11 +861,19 @@ function setFrameStyle(piece, v){
 }
 
 // —— 卷操作 ——
-function newRoll(){
+function newRoll(filmType){
   const id = nextId++;
-  const roll = { id, name:'卷 '+id, shots:[] };
+  const roll = { id, name:'卷 '+id, shots:[], filmType: filmType || 'reversal' };
   rolls.push(roll); renderTray();
   return roll;
+}
+// 切换某卷胶片类型(循环 反转->黑白->负片),该卷所有 piece 实时重渲
+function cycleRollType(roll){
+  if(!roll) return;
+  const i = FILM_TYPES.findIndex(t=>t.v===rollFilmType(roll));
+  roll.filmType = FILM_TYPES[(i+1)%FILM_TYPES.length].v;
+  rerenderPiecesByRoll(roll.id);   // 该卷所有 piece 重渲(renderPiece -> renderPieceFilm 按新 filmType)
+  renderTray();
 }
 function deleteRoll(roll){
   roll.shots.forEach(s=>URL.revokeObjectURL(s.url));
@@ -973,6 +1021,7 @@ function renderTray(){
       `<div class="roll-meta">`+
         `<div class="roll-name">${roll.name}</div>`+
         `<div class="roll-count">${roll.shots.length} 张</div>`+
+        `<button class="roll-type" title="切换胶片类型(反转/黑白/负片)">${filmTypeLabel(rollFilmType(roll))}</button>`+
       `</div>`+
       `<div class="roll-btns">`+
         `<button class="roll-add" title="加照片进这卷">＋</button>`+
@@ -1057,17 +1106,24 @@ films.forEach((f,i)=>{
 });
 
 // —— 导入入口 ——
-$('#newRoll').onclick = ()=>{ newRoll(); };       // 新建空卷(无照片,不自动上台)
-$('#placeholder').onclick = ()=>{ importTarget = newRoll(); file.click(); };  // 引导:新建卷并导入
+// 新建卷:点「＋」展开胶片类型三选一,选一类即建空卷(默认反转,不自动上台)
+const newRollPanel = $('#newRollPanel');
+$('#newRoll').onclick = ()=>{ newRollPanel.hidden = !newRollPanel.hidden; };
+newRollPanel.addEventListener('click', e=>{
+  const t = e.target.dataset.t; if(!t) return;
+  newRoll(t);
+  newRollPanel.hidden = true;
+});
+$('#placeholder').onclick = ()=>{ importTarget = newRoll(); file.click(); };  // 引导:新建卷并导入(默认反转)
 file.onchange = e => { addFiles(e.target.files); file.value=''; };
 
 // —— 候选区(按卷):卷头 pointerdown 拖出即跟随 / 删除 / 卷内＋导入 ——
 const rollsEl = $('#rolls');
 rollsEl.addEventListener('pointerdown', e=>{
   if(e.button) return;
-  // 功能按钮(删整卷/导入/删单张)各自的 click 优先,不起拖
+  // 功能按钮(删整卷/导入/删单张/切类型)各自的 click 优先,不起拖
   if(e.target.closest('.roll-del') || e.target.closest('.roll-add')
-     || e.target.closest('.del')) return;
+     || e.target.closest('.roll-type') || e.target.closest('.del')) return;
   const sec = e.target.closest('.roll'); if(!sec) return;   // 卡片任意处(含缩略图)都能抓整卷
   const roll = rollById(sec.dataset.r);
   if(!roll || !roll.shots.length) return;     // 空卷没照片,建不了 piece
@@ -1083,6 +1139,7 @@ rollsEl.addEventListener('click', e=>{
   const roll = rollById(sec.dataset.r); if(!roll) return;
   if(e.target.classList.contains('roll-del')){ deleteRoll(roll); return; }
   if(e.target.classList.contains('roll-add')){ importTarget = roll; file.click(); return; }
+  if(e.target.classList.contains('roll-type')){ cycleRollType(roll); return; }
   const th = e.target.closest('.thumb');
   if(th && e.target.classList.contains('del')){ removeShot(roll, +th.dataset.i); return; }
 });
@@ -1266,6 +1323,19 @@ if(location.search.includes('selftest')){
        pieceFrameStyle(legacy)==='film' && legacy.canvas.width>0);
     removePiece(legacy);
     setFrameStyle(single, 'film');   // 复位,后续导出断言基于 film 几何
+
+    // —— 阶段D:per-roll 胶片类型(反转/黑白/负片)——
+    ok('新建卷默认 filmType=reversal', r.filmType==='reversal' && rollFilmType(r)==='reversal');
+    const rNeg = newRoll('negative');
+    ok('newRoll(negative) 设置 filmType', rNeg.filmType==='negative');
+    const rLegacy = newRoll(); delete rLegacy.filmType;
+    ok('旧卷无 filmType 字段按 reversal 向后兼容', rollFilmType(rLegacy)==='reversal');
+    rNeg.shots.push({url:im.src,img:im});
+    const pNeg = addPiece(rNeg, 700, 900);
+    ok('负片卷 piece 正常渲染(canvas 有效)', !!pNeg && pNeg.canvas.width>0 && pNeg.canvas.height>0);
+    cycleRollType(rNeg);   // negative -> reversal,该卷 piece 实时重渲
+    ok('切类型循环并落到 roll(negative->reversal)', rNeg.filmType==='reversal' && pNeg.canvas.width>0);
+    removePiece(pNeg); deleteRoll(rNeg); deleteRoll(rLegacy);
 
     // 单张能进导出:摆到发光窗中心合成后非纯白底
     centerPieceAt(single, TW/2, TH/2);
