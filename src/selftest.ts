@@ -8,8 +8,12 @@ import { layoutPieceEl, centerPieceAt } from './deck';
 import { pieceLayout, renderPiece } from './render';
 import { setSelection, cutSelected, pieceFrameStyle, setFrameStyle } from './frames';
 import { rollFilmType, type Roll } from './types';
+import { persistRoll, loadAllRolls, writeCount } from './persist';
 
 const T: [string, boolean][] = [], ok = (n: string, c: unknown)=>T.push([n,!!c]);
+// 持久层:仅断言函数已导出,selftest 路径不调用任何 DB(见 writeCount 守卫)
+ok('持久层函数已导出', typeof persistRoll === 'function' && typeof loadAllRolls === 'function');
+ok('selftest 路径未写库(writeCount===0)', writeCount === 0);
 const r = newRoll();
 const im = new Image();
 im.onload = ()=>{

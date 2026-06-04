@@ -2,16 +2,17 @@
 //   业务逻辑全部下沉到 types/state/render/deck/pieces/frames/rolls/tray/presets;
 //   本文件只做接线,不含任何业务函数体。
 import './styles.css';
-import type { FilmType } from './types';
+import type { FilmType, Roll } from './types';
 import { $, screen, tray, films, deckScale, ui } from './core';
-import { pieces, filmIdx, rollById, setImportTarget, setGlow, setRadius } from './state';
+import { pieces, rolls, filmIdx, rollById, setImportTarget, setNextId, setGlow, setRadius } from './state';
 import { render } from './render';
 import { applyDeck, updatePlaceholder, deckRect, layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from './frames';
-import { addPiece, startPieceDrag, onPointerMove, endPieceDrag } from './pieces';
+import { addPiece, startPieceDrag, onPointerMove, endPieceDrag, rerenderPiecesByRoll } from './pieces';
 import { newRoll, deleteRoll, cycleRollType, removeShot, moveShot, addFiles } from './rolls';
-import { expandRoll, hideExpand, cancelHideExpand, scheduleHideExpand } from './tray';
+import { expandRoll, hideExpand, cancelHideExpand, scheduleHideExpand, renderTray } from './tray';
 import { save, syncLabels, selectFilm, toggleDrawer, seedSampleRoll, setFmt } from './presets';
+import { loadAllRolls } from './persist';
 
 // —— 胶卷规格:底部 dock chip + 抽屉「胶片」组 seg(共用 selectFilm)——
 const filmsEl = $('#films'), filmSeg = $('#filmSeg');
@@ -170,5 +171,28 @@ $('#scrim').onclick = ()=>toggleDrawer(false);
 // —— 初始化 ——
 applyDeck();
 updatePlaceholder();
-if(location.search.includes('selftest')) import('./selftest');   // 自检环境:动态 import 触发 PASS/FAIL 浮层
-else seedSampleRoll();                                            // 正常环境:预置示例卷
+if(location.search.includes('selftest')){
+  import('./selftest');                       // 自检环境:动态 import 触发 PASS/FAIL 浮层(不触库)
+} else {
+  // 正常环境:先从 IndexedDB 恢复用户卷,库空才预置示例卷
+  void (async ()=>{
+    const stored = await loadAllRolls();
+    if(stored.length){
+      stored.forEach(rec=>{
+        const roll: Roll = { id: rec.id, name: rec.name, shots: [], filmType: rec.filmType };
+        rec.shots.forEach(blob=>{
+          const url = URL.createObjectURL(blob);    // 同源 blob URL,不污染画布
+          const im = new Image();
+          im.onload = ()=>{ rerenderPiecesByRoll(roll.id); renderTray(); };   // 异步渐次补图
+          im.src = url;
+          roll.shots.push({ url, img:im, blob });   // 留 blob 以便后续编辑再次落库
+        });
+        rolls.push(roll);
+      });
+      setNextId(Math.max(...stored.map(r=>r.id)) + 1);   // 新卷 id 不与恢复卷冲突
+      renderTray();                                      // 先显示卷(数量),图随 onload 补
+    } else {
+      seedSampleRoll();   // 库空才 seed 示例
+    }
+  })();
+}

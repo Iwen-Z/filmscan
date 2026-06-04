@@ -61,7 +61,7 @@ const SAMPLE_IMAGES = [
   'images/DSC02899.JPG', 'images/DSC02910.JPG', 'images/DSC02926.JPG',
 ];
 export function seedSampleRoll(){
-  const roll = newRoll(); roll.name = '示例卷';
+  const roll = newRoll(); roll.name = '示例卷'; roll.sample = true;   // 标记示例:持久层跳过它
   SAMPLE_IMAGES.forEach(src=>{
     const img = new Image();
     img.onload  = ()=>{ rerenderPiecesByRoll(roll.id); renderTray(); };

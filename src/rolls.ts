@@ -4,6 +4,7 @@ import { FILM_TYPES, rollFilmType } from './types';
 import { rolls, setRolls, allocId, importTarget, setImportTarget, rollById } from './state';
 import { rerenderPiecesByRoll, removePiecesByRoll } from './pieces';
 import { renderTray } from './tray';
+import { persistRoll, deleteRollFromDB } from './persist';
 
 export function newRoll(filmType?: FilmType): Roll {
   const id = allocId();
@@ -18,12 +19,14 @@ export function cycleRollType(roll: Roll){
   roll.filmType = FILM_TYPES[(i+1)%FILM_TYPES.length].v;
   rerenderPiecesByRoll(roll.id);   // 该卷所有 piece 重渲(renderPiece -> renderPieceFilm 按新 filmType)
   renderTray();
+  void persistRoll(roll);          // filmType 变更落库(fire-and-forget)
 }
 export function deleteRoll(roll: Roll){
   roll.shots.forEach(s=>URL.revokeObjectURL(s.url));
   removePiecesByRoll(roll.id);
   setRolls(rolls.filter(r=>r!==roll));
   renderTray();
+  void deleteRollFromDB(roll.id);  // 删卷:同步从库移除(fire-and-forget)
 }
 export function removeShot(roll: Roll, i: number){
   URL.revokeObjectURL(roll.shots[i].url);
@@ -31,6 +34,7 @@ export function removeShot(roll: Roll, i: number){
   if(roll.shots.length) rerenderPiecesByRoll(roll.id);
   else removePiecesByRoll(roll.id);   // 卷空了,连带移除其 piece
   renderTray();
+  void persistRoll(roll);          // 帧数变更:覆盖整卷
 }
 export function moveShot(tdata: string, target: Roll){
   const [rid,idx] = tdata.split(':');
@@ -41,6 +45,7 @@ export function moveShot(tdata: string, target: Roll){
   else rerenderPiecesByRoll(src.id);
   rerenderPiecesByRoll(target.id);
   renderTray();
+  void persistRoll(src); void persistRoll(target);   // 两卷归属变更都落库
 }
 
 // —— 导入照片进某卷 ——
@@ -52,10 +57,11 @@ export function addFiles(list: FileList, roll?: Roll | null){
   imgs.forEach((f: File)=>{
     const url = URL.createObjectURL(f);
     const im = new Image();
-    const shot = { url, img:im };
+    const shot = { url, img:im, blob:f };   // File 即 Blob,直接留作持久化源
     im.onload = ()=>{ rerenderPiecesByRoll(dest.id); renderTray(); };
     im.src = url;
     dest.shots.push(shot);
   });
   renderTray();
+  void persistRoll(dest);   // 导入后整卷落库(blob 已就绪,无需等 onload)
 }
