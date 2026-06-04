@@ -1,0 +1,27 @@
+{
+  "name": "filmscan",
+  "version": "1.0.0",
+  "description": "把底片放上一台**发光的实体观片台**翻拍 —— 不是 Photoshop 式的工具面板,而是一个沉浸场景:照片平躺在发光台面上,放在深色桌面上。",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Iwen-Z/filmscan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Iwen-Z/filmscan/issues"
+  },
+  "homepage": "https://github.com/Iwen-Z/filmscan#readme",
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}
