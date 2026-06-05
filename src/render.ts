@@ -7,6 +7,9 @@ import { pieceFrameStyle } from './frames';
 const VIGNETTE_STRENGTH = 0.45;   // 暗角强度(0~1),逐帧四角自然压暗,可调
 const HALATION_STRENGTH = 0.18;   // halation 红橙光晕强度,lighter 合成只加亮高光区
 
+// 确定性 LCG:由整数 seed 派生 [0,1) 伪随机,不用 Math.random,保证同 piece/帧索引可重跑
+function lcg(seed: number) { return ((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff; }
+
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
 export interface PieceLayout {
   roll: Roll | undefined;
@@ -194,7 +197,11 @@ export function renderPieceFilm(piece: Piece){
     // 按 filmType 处理画面:reversal 原样;bw 灰度;negative 反相 + 橙罩(C-41 观感)
     if(filmType==='bw')            ctx.filter = 'grayscale(1)';
     else if(filmType==='negative') ctx.filter = 'invert(1)';
+    // 密度微差:每帧明度轻微不均(0.92~1.00),drawImage 前设、后立刻复位,不影响后续绘制
+    const densityAlpha = 0.92 + lcg(piece.id * 31 + i * 17) * 0.08;
+    ctx.globalAlpha = densityAlpha;
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
+    ctx.globalAlpha = 1;
     ctx.filter = 'none';
     if(filmType==='negative'){     // 叠橙色蒙版(C-41 橙罩),clip 内只染本帧
       ctx.globalAlpha = 0.35;
@@ -232,6 +239,38 @@ export function renderPieceFilm(piece: Piece){
     ctx.fillStyle = h2;
     ctx.fillRect(fx, framesY, fw, fh);
     ctx.globalCompositeOperation = 'source-over';  // 还原
+
+    // 色温微差:帧内叠极淡暖/冷色块,帧间色温轻微不均一(确定性按 piece.id+i)
+    const warm = (piece.id * 7 + i * 11) % 3 === 0;
+    ctx.fillStyle = warm ? 'rgba(255,200,100,0.04)' : 'rgba(100,140,255,0.03)';
+    ctx.fillRect(fx, framesY, fw, fh);
+    ctx.restore();
+
+    // 灰尘点 + 毛发丝(帧 clip 之后,独立 save/restore,确定性 LCG 派生)
+    ctx.save();
+    rr(ctx, fx, framesY, fw, fh, 0); ctx.clip();
+    const dustCount = 3 + ((piece.id * 13 + i * 7) % 5);  // 3~7 个尘点
+    for (let d = 0; d < dustCount; d++) {
+      const dx = fx + lcg(piece.id*100+i*20+d*3) * fw;
+      const dy = framesY + lcg(piece.id*100+i*20+d*3+1) * fh;
+      const dr = 0.8 + lcg(piece.id*100+i*20+d*3+2) * 1.2;
+      const da = 0.20 + lcg(piece.id*100+i*20+d*3+3) * 0.25;
+      ctx.beginPath(); ctx.arc(dx, dy, dr, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(200,190,180,'+da+')';
+      ctx.fill();
+    }
+    // 毛发丝(1~2 根):短折线
+    const hairCount = 1 + (piece.id + i) % 2;
+    for (let h = 0; h < hairCount; h++) {
+      const hx1 = fx + lcg(piece.id*200+i*30+h*4) * fw;
+      const hy1 = framesY + lcg(piece.id*200+i*30+h*4+1) * fh;
+      const hx2 = hx1 + (lcg(piece.id*200+i*30+h*4+2)-0.5) * fw*0.25;
+      const hy2 = hy1 + (lcg(piece.id*200+i*30+h*4+3)-0.5) * fh*0.20;
+      ctx.beginPath(); ctx.moveTo(hx1,hy1); ctx.lineTo(hx2,hy2);
+      ctx.strokeStyle = 'rgba(120,110,100,0.28)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
     ctx.restore();
   });
 
