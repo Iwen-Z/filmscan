@@ -154,13 +154,14 @@ export function renderPieceFilm(piece: Piece){
   renderPieceFilmBase(piece, L);
   renderPieceFilmPhotos(piece, L);
 
-  // 剪下的单张(shots!==null,N=1)叠一点确定性旋转,增加随手摆放感。
+  // 整卷(shots===null)叠一点确定性轻微旋转,增加随手摆放感;剪下的单张(shots!==null)摆正,由用户自由摆放。
   //   piece 定位走 layoutPieceEl 的 left/top(非 transform),故 transform 只承载 rotate,无需拼接 translate。
-  //   角度确定性派生自 piece.id(不用 Math.random,可重跑),范围 ±3°。
-  if (piece.shots !== null) {
-    const angle = ((piece.id * 137 + 19) % 60 - 30) / 10;
-    piece.el.style.transform = 'rotate(' + angle + 'deg)';
-    piece.rotation = angle;
+  //   角度确定性派生自 piece.id 的 LCG(不用 Math.random,可重跑),范围 ±3°。
+  //   piece.rotation 存弧度,供 presets.ts save() 旋转导出(与屏幕 deg 一致)。
+  if (piece.shots === null) {
+    const deg = Math.round((lcg(piece.id * 911 + 13) * 2 - 1) * 30) / 10;   // ±3°(1 位小数),LCG seeded by piece.id
+    piece.el.style.transform = 'rotate(' + deg + 'deg)';
+    piece.rotation = deg * Math.PI / 180;
   } else {
     piece.el.style.transform = '';
     piece.rotation = 0;

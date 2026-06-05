@@ -36,7 +36,7 @@ export interface Piece {
   photoCtx: CanvasRenderingContext2D;
   shots: Shot[] | null;
   frameStyle?: string;
-  rotation?: number;   // 剪下单张的确定性轻微旋转(度);导出读取以匹配台面观感,长条恒为 0
+  rotation?: number;   // 整卷的确定性轻微旋转(弧度,LCG 派生);导出读取以匹配台面观感,剪下单张恒为 0
 }
 
 //   旧 roll 无 filmType 字段 -> 按 'reversal' 向后兼容(见 rollFilmType)。
