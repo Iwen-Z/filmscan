@@ -12,6 +12,34 @@
 - 纯前端、不上传服务器，照片只在浏览器本地处理；**不引入运行时 UI 框架**是约束，加功能保持原生 TS + Canvas。
 <!-- cc-auto:ops 结束 -->
 
+## 架构地图（手写 · 给规划者少绕路用 · 改了模块边界就同步）
+
+> 目的：规划新需求时先看这张图定位「动哪几个文件」，不必挨个打开 13 个 `src/*.ts` 重建依赖图。每个文件头自带一行域注释，这里只给**依赖分层**和**需求→文件**反查。
+
+**依赖分层（上层 import 下层，无环）**：
+- `types.ts` — 全局契约：`FilmType`/`Shot`/`Roll`/`Piece`、`FILM_TYPES`、`rollFilmType`/`filmTypeLabel`。下游全从这 import 类型。
+- `core.ts` — 共享内核：DOM 取用器 `$`、台面常量 `TW/TH`、`films` 规格表、`deckScale`、纯工具。无业务。
+- `state.ts` — 全局可变态 + setter（`rolls`/`pieces`/`selected`/`glow`/`radius`/`filmIdx`、`rollById`）。ESM 绑定不可重赋值，故整体替换/自增走 setter。
+- `render.ts` — 渲染域：`renderBg`（发光台面）、`pieceLayout`（几何）、`renderPiece`/`Bare`/`Polaroid`/`Film`（按 frameStyle 画 canvas）。**胶片质感所有阶段都改这里的 `renderPieceFilm`/`pieceLayout`**。
+- 业务域（互相平级，都依赖上面四层）：
+  - `deck.ts` — 观片台机身 + piece 的 CSS 布局/视口夹取。
+  - `pieces.ts` — 台面 piece：新建/移除/重渲 + 统一 pointer 拖动。
+  - `frames.ts` — 选帧/剪下/边框样式工具条。
+  - `rolls.ts` — 卷操作：新建/切类型/删卷/删帧/移帧/导入照片。
+  - `tray.ts` — 右侧候选区（按卷分组）：`drawCoil` 胶圈缩略 + `showExpand`/`hideExpand` hover 展开预览 + `renderTray`。
+  - `presets.ts` — 导出 `save` / 标签同步 / **画幅规格选择 `selectFilm`/`setFmt`（现为全局态 `filmIdx`，非 per-roll）** / 抽屉。
+  - `persist.ts` — 用户卷存 IndexedDB（db=filmscan/store=rolls；只存 `shot.blob`，url/img 恢复时重建）。
+- `main.ts` — 入口编排：只做 DOM 取用 + 事件绑定 + 初始化，**不含业务函数体**（业务全下沉到上面）。
+- `selftest.ts` — `?selftest` 时 main 动态 import，跑断言出 PASS/FAIL 浮层。
+
+**需求 → 动哪些文件（反查）**：
+- 画面/胶片质感（漏光/印字/暗角/halation/灰尘…）：`render.ts`（`renderPieceFilm`/`pieceLayout`）为主，开关态进 `state.ts`/`types.ts`。
+- 画幅/规格：现在是**全局** `filmIdx`（`core.ts` `films` + `presets.ts` `selectFilm`）。若改 per-roll → `types.ts`（`Roll` 加字段）+ `rolls.ts` + `render.ts`（`pieceLayout` 读卷的画幅）+ 迁移 `presets.ts` 的画幅 UI。
+- 新建卷流程/弹窗：`rolls.ts` `newRoll` + `main.ts` 接线 + `index.html`/`styles.css` 加 modal。
+- 右侧候选区外观/动画（平视竖放、卷轴展开）：`tray.ts`（`drawCoil`/`renderTray`/`showExpand`）+ `styles.css`。
+- 拖拽/选帧/剪下：`pieces.ts`（拖）/ `frames.ts`（选剪）。
+- 导出：`presets.ts` `save`（注意 tainted canvas 坑，见下节）。
+
 ## 本地运行 / 导出的坑（手写，勿被 cc-auto 覆盖）
 
 - **导出图片要用本地服务器跑（`npm run dev` 或 `npm run preview`），别用 `file://` 双击打开**：内置示例卷的图来自 `public/images/`（Vite 同源 serve 到根 `/images`）。`file://` 把每个本地文件当独立安全源 → 画布被「污染」(tainted canvas) → `toBlob` 抛 `SecurityError`、下载失败。页面一打开就 seed 了示例卷，所以 `file://` 下导出默认必废。**Vite dev/preview 已是同源 HTTP**，不污染、导出正常——不再需要手动起 `python3 -m http.server`。
