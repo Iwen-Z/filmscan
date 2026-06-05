@@ -1,7 +1,7 @@
 // —— 候选区(按卷分组)域:暗盒缩略 + hover 展开预览 + tray 渲染 ——
 import type { Roll, FilmType } from './types';
-import { filmTypeLabel, rollFilmType } from './types';
-import { $ } from './core';
+import { filmTypeLabel, rollFilmType, rollFilmIdx } from './types';
+import { $, films } from './core';
 import { rolls, pieces } from './state';
 
 // 圆角矩形路径(自带 helper,不依赖 ctx.roundRect,headless 兼容)
@@ -75,9 +75,10 @@ export function drawCanister(canvas: HTMLCanvasElement, roll: Roll){
 }
 
 // —— 展开预览:把单帧 cover 裁切画进一个小 canvas(横画幅,高 80) ——
-export function drawFrameThumb(canvas: HTMLCanvasElement, img: HTMLImageElement | undefined){
+//   画幅比例按 per-roll 规格(films[rollFilmIdx(roll)].aspect),不再硬编 3:2。
+export function drawFrameThumb(canvas: HTMLCanvasElement, img: HTMLImageElement | undefined, roll: Roll){
   const dpr = window.devicePixelRatio || 1;
-  const h = 80, w = Math.round(h * 3/2);     // 预览统一用 3:2 横画幅
+  const h = 80, w = Math.round(h * films[rollFilmIdx(roll)].aspect);   // per-roll 画幅比
   canvas.style.width = w+'px'; canvas.style.height = h+'px';
   canvas.width = w*dpr; canvas.height = h*dpr;
   const c = canvas.getContext('2d')!;
@@ -106,22 +107,35 @@ export function showExpand(roll: Roll, sec: HTMLElement){
     e.className = 'ex-empty'; e.textContent = '空卷 · 点 ＋ 导入照片';
     wrap.appendChild(e);
   } else {
-    roll.shots.forEach(sh=>{
+    roll.shots.forEach((sh, i)=>{
       const cv = document.createElement('canvas');
-      drawFrameThumb(cv, sh.img);
+      cv.dataset.idx = String(i);          // CSS transition-delay 级联入场用
+      drawFrameThumb(cv, sh.img, roll);
       wrap.appendChild(cv);
     });
   }
-  wrap.style.display = 'flex';
-  // 与 roll-item 同 top 对齐,夹在视口内
+  // 与 roll-item 同 top 对齐,夹在视口内(class 切前先量 offsetHeight,display:flex 默认在)
   const r = sec.getBoundingClientRect();
   const eh = wrap.offsetHeight;
   wrap.style.top = Math.max(6, Math.min(r.top, window.innerHeight - eh - 6)) + 'px';
+  // 加 class 驱动 CSS transform+transition 卷轴抽出动画(替代 display 硬切)
+  wrap.classList.add('expand-visible');
+}
+// transitionend 清 DOM:模块级单例,避免快速 show/hide 时监听器堆积
+function onExpandTransitionEnd(e: TransitionEvent){
+  const wrap = e.currentTarget as HTMLElement;
+  if(e.target !== wrap) return;                          // 只认 wrap 自身,忽略子 canvas 冒泡
+  if(wrap.classList.contains('expand-visible')) return;  // 期间又被展开 -> 不清
+  wrap.innerHTML = '';
 }
 export function hideExpand(){
   if(expandHideTimer){ clearTimeout(expandHideTimer); expandHideTimer = null; }
   const wrap = $('#rollExpand');
-  wrap.style.display = 'none'; wrap.innerHTML = ''; expandRoll = null;
+  // 先移 class 触发收起动画;动画结束(transitionend)再清 DOM,避免动画未走完就清空
+  wrap.removeEventListener('transitionend', onExpandTransitionEnd);  // 去重,确保单例
+  wrap.addEventListener('transitionend', onExpandTransitionEnd);
+  wrap.classList.remove('expand-visible');
+  expandRoll = null;
 }
 export function scheduleHideExpand(){
   if(expandHideTimer) clearTimeout(expandHideTimer);

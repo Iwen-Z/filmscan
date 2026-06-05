@@ -46,9 +46,9 @@
 
 **需求 → 动哪些文件（反查）**：
 - 画面/胶片质感（漏光/印字/暗角/halation/灰尘…）：`render.ts`（`renderPieceFilm`/`pieceLayout`）为主，开关态进 `state.ts`/`types.ts`。
-- 画幅/规格：现在是**全局** `filmIdx`（`core.ts` `films` + `presets.ts` `selectFilm`）。若改 per-roll → `types.ts`（`Roll` 加字段）+ `rolls.ts` + `render.ts`（`pieceLayout` 读卷的画幅）+ 迁移 `presets.ts` 的画幅 UI。
-- 新建卷流程/弹窗：`rolls.ts` `newRoll` + `main.ts` 接线 + `index.html`/`styles.css` 加 modal。
-- 右侧候选区外观/动画（平视竖放、卷轴展开）：`tray.ts`（`drawCoil`/`renderTray`/`showExpand`）+ `styles.css`。
+- 画幅/规格：已 **per-roll**：`Roll.filmIdx`（`types.ts`，`rollFilmIdx(roll)` 旧卷缺字段兼容=135）+ `core.ts` `films` 规格表。读画幅的地方：`render.ts`（`pieceLayout` 按卷画幅）、`tray.ts`（`drawFrameThumb` 缩略图比例）。卷的画幅在新建/设置弹窗里选（见下条），不再是全局 `presets.ts` `selectFilm`。
+- 新建卷流程/弹窗（弹窗即设置）：`rolls.ts`（`newRoll`/`updateRollSettings`）+ `main.ts` 接线 + `index.html`/`styles.css` 的 modal；卷类型/画幅/张数上限都在这弹窗里设。
+- 右侧候选区外观/动画（暗盒形态 + 卷轴抽出展开）：`tray.ts`（`drawCanister` 暗盒缩略 / `renderTray` / `showExpand`+`hideExpand` 加减 `.expand-visible` class / `drawFrameThumb` per-roll 比例）+ `styles.css`（`#rollExpand` transform+transition 卷轴动画、canvas nth-child 级联 delay）。
 - 拖拽/选帧/剪下：`pieces.ts`（拖）/ `frames.ts`（选剪）。
 - 导出：`presets.ts` `save`（注意 tainted canvas 坑，见下节）。
 
