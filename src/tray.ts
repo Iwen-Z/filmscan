@@ -105,11 +105,14 @@ export function renderTray(){
     sec.className = 'roll' + (onDeck ? ' on' : '');
     sec.dataset.r = String(roll.id);
     sec.title = '按住拖到台面 = 放这卷 · hover 预览各帧';
+    const capped = roll.cap != null;
+    const full = capped && roll.shots.length >= (roll.cap as number);
+    const countTxt = capped ? `${roll.shots.length}/${roll.cap} 张` : `${roll.shots.length} 张`;
     sec.innerHTML =
       `<canvas class="coil"></canvas>`+
       `<div class="roll-meta">`+
         `<div class="roll-name">${roll.name}</div>`+
-        `<div class="roll-count">${roll.shots.length} 张</div>`+
+        `<div class="roll-count${full ? ' full' : ''}">${countTxt}</div>`+
         `<button class="roll-type" title="切换胶片类型(反转/黑白/负片)">${filmTypeLabel(rollFilmType(roll))}</button>`+
       `</div>`+
       `<div class="roll-btns">`+

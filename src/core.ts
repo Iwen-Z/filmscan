@@ -5,6 +5,19 @@
 export const $ = <T extends Element = HTMLElement>(s: string): T => document.querySelector(s) as T;
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
+// 轻提示:无依赖临时 toast,4s 后自移除(失败也不抛);共享给 persist/rolls 等所有业务模块。
+export function toast(msg: string): void {
+  try {
+    const d = document.createElement('div');
+    d.textContent = msg;
+    d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:999;'
+      + 'max-width:80vw;padding:10px 16px;border-radius:8px;font:13px system-ui,sans-serif;'
+      + 'color:#fff;background:#b42318;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 4000);
+  } catch (_) { /* DOM 不可用(如非浏览器环境)时静默 */ }
+}
+
 // 台面画布分辨率(4:3),导出尺寸
 export const TW = 2000, TH = 1500;
 

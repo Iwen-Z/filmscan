@@ -4,6 +4,7 @@
 //   url/img 是运行时态(createObjectURL + new Image()),恢复时重建,不入库。
 //   全部 async + try/catch;QuotaExceededError 时 console.warn + 轻提示,绝不崩。
 import type { FilmType, Roll } from './types';
+import { toast } from './core';
 
 const DB_NAME = 'filmscan';
 const STORE = 'rolls';
@@ -45,19 +46,6 @@ function handleErr(e: unknown): void {
   } else {
     console.warn('[persist] 持久化操作失败:', e);
   }
-}
-
-// 轻提示:无依赖临时 toast,4s 后自移除(失败也不抛)
-function toast(msg: string): void {
-  try {
-    const d = document.createElement('div');
-    d.textContent = msg;
-    d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:999;'
-      + 'max-width:80vw;padding:10px 16px;border-radius:8px;font:13px system-ui,sans-serif;'
-      + 'color:#fff;background:#b42318;box-shadow:0 4px 16px rgba(0,0,0,.3)';
-    document.body.appendChild(d);
-    setTimeout(() => d.remove(), 4000);
-  } catch (_) { /* DOM 不可用(如非浏览器环境)时静默 */ }
 }
 
 // upsert 整卷;无 blob 的帧不入库(恢复后无法重建)

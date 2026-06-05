@@ -154,6 +154,7 @@
   .roll-name{ font-size:12px; color:var(--ink); font-weight:600;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roll-count{ font-size:10px; color:var(--sub); margin-top:3px; }
+  .roll-count.full{ color:#e05555; font-weight:600; }   /* 满卷:张数变红加粗 */
   /* 卷内切换胶片类型:点一下循环 反转->黑白->负片,该卷所有 piece 实时重渲 */
   .roll-type{ display:inline-block; margin-top:5px; font:inherit; font-size:10px; line-height:1;
               cursor:pointer; padding:3px 8px; border-radius:10px; border:1px solid var(--line);

@@ -5,6 +5,7 @@ import { rolls, setRolls, allocId, importTarget, setImportTarget, rollById } fro
 import { rerenderPiecesByRoll, removePiecesByRoll } from './pieces';
 import { renderTray } from './tray';
 import { persistRoll, deleteRollFromDB } from './persist';
+import { toast } from './core';
 
 // 新建空卷。
 //   新签名走对象参 { filmType?, filmIdx?, cap? };
@@ -26,6 +27,9 @@ export function updateRollSettings(roll: Roll, opts: { filmType?: FilmType; film
   if(!roll) return;
   if(opts.filmType != null) roll.filmType = opts.filmType;
   if(opts.filmIdx != null)  roll.filmIdx = opts.filmIdx;
+  // 下调 cap 到现有帧数以下:不删帧,仅提示满卷后无法继续导入
+  if(opts.cap != null && opts.cap < roll.shots.length)
+    toast(`当前已有 ${roll.shots.length} 张,下调 cap 不删帧,满卷后无法继续导入`);
   roll.cap = opts.cap;       // undefined = 不限(显式覆盖)
   rerenderPiecesByRoll(roll.id);   // 画幅/类型变 -> 该卷所有 piece 重渲
   renderTray();
@@ -58,6 +62,7 @@ export function removeShot(roll: Roll, i: number){
 export function moveShot(tdata: string, target: Roll){
   const [rid,idx] = tdata.split(':');
   const src = rollById(rid); if(!src || src===target) return;
+  if(target.cap != null && target.shots.length >= target.cap){ toast('目标卷已满'); return; }
   const [shot] = src.shots.splice(+idx,1); if(!shot) return;
   target.shots.push(shot);
   if(!src.shots.length) removePiecesByRoll(src.id);
@@ -69,10 +74,18 @@ export function moveShot(tdata: string, target: Roll){
 
 // —— 导入照片进某卷 ——
 export function addFiles(list: FileList, roll?: Roll | null){
-  const imgs = [...list].filter((f: File)=>f.type.startsWith('image/'));
+  let imgs = [...list].filter((f: File)=>f.type.startsWith('image/'));
   if(!imgs.length) return;
   const dest = roll || importTarget || (rolls.length ? rolls[rolls.length-1] : newRoll());
   setImportTarget(null);
+  // cap 强制:只允许导入剩余容量内的帧,多余截断并 toast 提示
+  const remaining = dest.cap != null ? dest.cap - dest.shots.length : Infinity;
+  if(remaining <= 0){ toast('卷已满,无法继续导入'); return; }
+  if(imgs.length > remaining){
+    const skipped = imgs.length - remaining;
+    imgs = imgs.slice(0, remaining);
+    toast(`卷已满,仅导入 ${remaining} 张(已跳过 ${skipped} 张)`);
+  }
   imgs.forEach((f: File)=>{
     const url = URL.createObjectURL(f);
     const im = new Image();

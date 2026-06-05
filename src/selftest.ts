@@ -2,7 +2,7 @@
 //   右下角浮层显示 PASS/FAIL,机制与原内联版完全一致。
 import { $, bg, bctx, TW, TH, clamp, deckScale, screen } from './core';
 import { pieces, selected } from './state';
-import { newRoll, cycleRollType, deleteRoll, updateRollSettings } from './rolls';
+import { newRoll, cycleRollType, deleteRoll, updateRollSettings, addFiles, moveShot } from './rolls';
 import { addPiece, removePiece, startPieceDrag } from './pieces';
 import { layoutPieceEl, centerPieceAt } from './deck';
 import { pieceLayout, renderPiece } from './render';
@@ -125,6 +125,24 @@ im.onload = ()=>{
   ok('updateRollSettings 局部更新 + cap 回不限',
      rOpts.filmIdx===2 && rOpts.filmType==='negative' && rOpts.cap===undefined);
   deleteRoll(rOpts);
+
+  // —— 阶段F:cap 张数上限强制(截断导入 / 满卷阻断移帧)——
+  const mkFile = ()=> new File([new Uint8Array([137,80,78,71])], 'x.png', { type:'image/png' });
+  const rCap = newRoll({ cap:2 });
+  addFiles([mkFile(), mkFile(), mkFile()] as unknown as FileList, rCap);
+  ok('cap 截断:3 张导入 cap=2 卷只收 2', rCap.shots.length===2);
+  addFiles([mkFile()] as unknown as FileList, rCap);
+  ok('满卷再导入被拒(帧数不变)', rCap.shots.length===2);
+  const rSrc = newRoll();
+  rSrc.shots.push({ url:im.src, img:im });
+  moveShot(rSrc.id+':0', rCap);
+  ok('moveShot 目标卷满被阻断(源帧保留、目标不变)',
+     rSrc.shots.length===1 && rCap.shots.length===2);
+  updateRollSettings(rCap, { cap:3 });   // 上调 cap 后腾出 1 张空位
+  moveShot(rSrc.id+':0', rCap);
+  ok('cap 充足 moveShot 正常移入',
+     rSrc.shots.length===0 && rCap.shots.length===3);
+  deleteRoll(rCap); deleteRoll(rSrc);
 
   // 单张能进导出:摆到发光窗中心合成后非纯白底
   centerPieceAt(single, TW/2, TH/2);
