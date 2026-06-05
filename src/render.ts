@@ -147,6 +147,18 @@ export function renderPieceFilm(piece: Piece){
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
   const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 逐帧画面处理
 
+  // 落影(在片基之前绘制,在片基下方):柔和投影体现实物摆放体积感
+  //   PAD = ceil(fh*0.22) 留白远大于 shadowBlur(≈BH*0.08),阴影不被 canvas 边裁切
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.40)';
+  ctx.shadowBlur = Math.round(BH * 0.08);
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = Math.round(BH * 0.04);
+  rr(ctx, bandX, bandTop, bandW, BH, bandR);
+  ctx.fillStyle = 'rgba(0,0,0,0.01)';  // 极淡填充触发 shadow API
+  ctx.fill();
+  ctx.restore();
+
   // 1) 片基(实色胶卷带,按 filmType 分色)+ 齿孔真镂空
   //    片基现为实色(alpha 0.92,留一丝材质感),不随滑杆/位置变;齿孔仍 destination-out 真镂空。
   const BASE_ALPHA = 0.92;                    // 实色片基(保留一丝材质感)
@@ -295,6 +307,18 @@ export function renderPieceFilm(piece: Piece){
     rr(ctx, fx, framesY, fw, fh, rad);
     ctx.stroke();
     ctx.restore();
+  }
+
+  // 剪下的单张(shots!==null,N=1)叠一点确定性旋转,增加随手摆放感。
+  //   piece 定位走 layoutPieceEl 的 left/top(非 transform),故 transform 只承载 rotate,无需拼接 translate。
+  //   角度确定性派生自 piece.id(不用 Math.random,可重跑),范围 ±3°。
+  if (piece.shots !== null) {
+    const angle = ((piece.id * 137 + 19) % 60 - 30) / 10;
+    piece.el.style.transform = 'rotate(' + angle + 'deg)';
+    piece.rotation = angle;
+  } else {
+    piece.el.style.transform = '';
+    piece.rotation = 0;
   }
 }
 
