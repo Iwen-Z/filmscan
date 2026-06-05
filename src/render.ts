@@ -5,7 +5,7 @@ import { radius, selected, pieces, rollById, leakEnabled } from './state';
 import { pieceFrameStyle } from './frames';
 
 const VIGNETTE_STRENGTH = 0.45;   // 暗角强度(0~1),逐帧四角自然压暗,可调
-const HALATION_STRENGTH = 0.18;   // halation 红橙光晕强度,lighter 合成只加亮高光区
+const HALATION_STRENGTH = 0.06;   // halation 红橙晕强度(source-over),仅高光门控帧叠加
 
 // 确定性 LCG:由整数 seed 派生 [0,1) 伪随机,不用 Math.random,保证同 piece/帧索引可重跑
 function lcg(seed: number) { return ((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff; }
@@ -317,27 +317,42 @@ export function renderPieceFilmPhotos(piece: Piece, L: PieceLayout){
     vig.addColorStop(1, 'rgba(0,0,0,'+VIGNETTE_STRENGTH+')');
     ctx.fillStyle = vig;
     ctx.fillRect(fx, framesY, fw, fh);
-    // halation:红橙光晕(lighter 加亮叠加,暗区几乎不变、高光区红晕加深;三种 filmType 一视同仁)
-    ctx.globalCompositeOperation = 'lighter';
-    // 主晕:模拟天空/高光区(帧偏上中央)
-    const h1 = ctx.createRadialGradient(
-      fx+fw*0.50, framesY+fh*0.30, 0,
-      fx+fw*0.50, framesY+fh*0.30, Math.min(fw,fh)*0.55
-    );
-    h1.addColorStop(0, 'rgba(200,60,10,'+HALATION_STRENGTH+')');
-    h1.addColorStop(1, 'rgba(200,60,10,0)');
-    ctx.fillStyle = h1;
-    ctx.fillRect(fx, framesY, fw, fh);
-    // 副晕:右上角小亮斑
-    const h2 = ctx.createRadialGradient(
-      fx+fw*0.75, framesY+fh*0.22, 0,
-      fx+fw*0.75, framesY+fh*0.22, Math.min(fw,fh)*0.28
-    );
-    h2.addColorStop(0, 'rgba(200,60,10,'+(HALATION_STRENGTH*0.6)+')');
-    h2.addColorStop(1, 'rgba(200,60,10,0)');
-    ctx.fillStyle = h2;
-    ctx.fillRect(fx, framesY, fw, fh);
-    ctx.globalCompositeOperation = 'source-over';  // 还原
+    // halation:高光门控红橙晕。采样本帧已绘像素,只有真正存在高光(L>200)且占比够大的帧
+    //   才在高光重心叠一抹极淡红橙径向晕(source-over);暗帧/中灰帧/无高光帧一律不叠,杜绝红疙瘩。
+    //   采样与重心全用 getImageData 像素确定性计算,无 Math.random,?selftest 可复现。
+    {
+      const gx0 = Math.max(0, Math.floor(fx));
+      const gy0 = Math.max(0, Math.floor(framesY));
+      const gx1 = Math.min(L.cw, Math.ceil(fx + fw));
+      const gy1 = Math.min(L.ch, Math.ceil(framesY + fh));
+      const gw = gx1 - gx0, gh = gy1 - gy0;
+      if (gw > 1 && gh > 1) {
+        const data = ctx.getImageData(gx0, gy0, gw, gh).data;
+        let hi = 0, sumX = 0, sumY = 0, sampled = 0;
+        const STEP = 2;   // 隔点采样(确定性):降算量,不影响门控判断与重心
+        for (let py = 0; py < gh; py += STEP) {
+          for (let px = 0; px < gw; px += STEP) {
+            const idx = (py * gw + px) * 4;
+            if (data[idx + 3] < 8) continue;   // 透明像素(圆角外/未绘)不计
+            sampled++;
+            const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+            if (lum > 200) { hi++; sumX += px; sumY += py; }   // 高光(>≈78%)入重心
+          }
+        }
+        // 高光占帧面积 > 0.5% 才叠晕,防暗帧/低对比帧误触发
+        if (sampled > 0 && hi / sampled > 0.005) {
+          const cx = gx0 + sumX / hi;   // 高光像素重心(确定性)
+          const cy = gy0 + sumY / hi;
+          const hr = Math.min(fw, fh) * 0.6;   // 柔和 falloff 半径 = 模糊感
+          const hg = ctx.createRadialGradient(cx, cy, 0, cx, cy, hr);
+          hg.addColorStop(0, 'rgba(255,80,20,' + HALATION_STRENGTH + ')');
+          hg.addColorStop(1, 'rgba(255,80,20,0)');
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = hg;
+          ctx.fillRect(fx, framesY, fw, fh);
+        }
+      }
+    }
 
     // 色温微差:帧内叠极淡暖/冷色块,帧间色温轻微不均一(确定性按 piece.id+i)
     const warm = (piece.id * 7 + i * 11) % 3 === 0;
