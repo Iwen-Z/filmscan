@@ -5,6 +5,7 @@ import { radius, selected, pieces, rollById, leakEnabled } from './state';
 import { pieceFrameStyle } from './frames';
 
 const VIGNETTE_STRENGTH = 0.45;   // 暗角强度(0~1),逐帧四角自然压暗,可调
+const HALATION_STRENGTH = 0.18;   // halation 红橙光晕强度,lighter 合成只加亮高光区
 
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
 export interface PieceLayout {
@@ -198,6 +199,27 @@ export function renderPieceFilm(piece: Piece){
     vig.addColorStop(1, 'rgba(0,0,0,'+VIGNETTE_STRENGTH+')');
     ctx.fillStyle = vig;
     ctx.fillRect(fx, framesY, fw, fh);
+    // halation:红橙光晕(lighter 加亮叠加,暗区几乎不变、高光区红晕加深;三种 filmType 一视同仁)
+    ctx.globalCompositeOperation = 'lighter';
+    // 主晕:模拟天空/高光区(帧偏上中央)
+    const h1 = ctx.createRadialGradient(
+      fx+fw*0.50, framesY+fh*0.30, 0,
+      fx+fw*0.50, framesY+fh*0.30, Math.min(fw,fh)*0.55
+    );
+    h1.addColorStop(0, 'rgba(200,60,10,'+HALATION_STRENGTH+')');
+    h1.addColorStop(1, 'rgba(200,60,10,0)');
+    ctx.fillStyle = h1;
+    ctx.fillRect(fx, framesY, fw, fh);
+    // 副晕:右上角小亮斑
+    const h2 = ctx.createRadialGradient(
+      fx+fw*0.75, framesY+fh*0.22, 0,
+      fx+fw*0.75, framesY+fh*0.22, Math.min(fw,fh)*0.28
+    );
+    h2.addColorStop(0, 'rgba(200,60,10,'+(HALATION_STRENGTH*0.6)+')');
+    h2.addColorStop(1, 'rgba(200,60,10,0)');
+    ctx.fillStyle = h2;
+    ctx.fillRect(fx, framesY, fw, fh);
+    ctx.globalCompositeOperation = 'source-over';  // 还原
     ctx.restore();
   });
 
