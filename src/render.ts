@@ -1,7 +1,7 @@
 // —— 渲染域:发光台面层 + 各 frameStyle 的 piece canvas 绘制 ——
 import { rollFilmType, rollFilmIdx, type Piece, type Roll, type Shot } from './types';
 import { bg, bctx, TW, TH, films, deckScale } from './core';
-import { radius, selected, pieces, rollById } from './state';
+import { radius, selected, pieces, rollById, leakEnabled } from './state';
 import { pieceFrameStyle } from './frames';
 
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
@@ -139,7 +139,7 @@ export function renderPieceFilm(piece: Piece){
   piece.el.style.width  = (L.cw*s)+'px';
   piece.el.style.height = (L.ch*s)+'px';
 
-  const { shots, fh, fw, g, m, BH, CW, originX, bandTop, framesY } = L;
+  const { shots, fh, fw, g, m, BH, CW, pad, originX, bandTop, framesY } = L;
   const rad = Math.round(Math.min(fw,fh) * radius/100/2);
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
   const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 逐帧画面处理
@@ -189,6 +189,26 @@ export function renderPieceFilm(piece: Piece){
     }
     ctx.restore();
   });
+
+  // 漏光:全局开关开时,在片头/片尾叠红橙渐变条(确定性派生自 piece.id,不用 Math.random)
+  if (leakEnabled) {
+    ctx.save();
+    // 片头漏光:左侧红橙渐变条
+    const leakW = pad * (0.6 + (piece.id % 7) * 0.04);  // 确定性宽度,±20% 浮动
+    const leakAlpha = 0.25 + (piece.id % 5) * 0.04;
+    const gl = ctx.createLinearGradient(bandX, 0, bandX + leakW, 0);
+    gl.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
+    gl.addColorStop(1, 'rgba(220,30,60,0)');
+    ctx.fillStyle = gl;
+    ctx.fillRect(bandX, bandTop, leakW, BH);
+    // 片尾漏光:右侧对称
+    const gr = ctx.createLinearGradient(bandX+bandW, 0, bandX+bandW-leakW, 0);
+    gr.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
+    gr.addColorStop(1, 'rgba(220,30,60,0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(bandX + bandW - leakW, bandTop, leakW, BH);
+    ctx.restore();
+  }
 
   // 3) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
   if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
