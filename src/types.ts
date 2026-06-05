@@ -14,6 +14,7 @@ export interface Roll {
   name: string;
   shots: Shot[];
   filmType: FilmType;
+  filmIdx: number;   // 画幅规格索引(对应 core.ts films);per-roll,旧卷缺字段按 1=135 兼容(见 rollFilmIdx)
 }
 
 // —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——
@@ -41,5 +42,7 @@ export const FILM_TYPES: { v: FilmType; label: string }[] = [
 
 export const rollFilmType = (roll?: Roll | null): FilmType =>
   (roll && roll.filmType) || 'reversal';
+export const rollFilmIdx = (roll?: Roll | null): number =>
+  (roll && roll.filmIdx != null ? roll.filmIdx : 1);
 export const filmTypeLabel = (v: FilmType): string =>
   (FILM_TYPES.find(t => t.v === v) || FILM_TYPES[0]).label;

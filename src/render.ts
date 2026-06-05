@@ -1,7 +1,7 @@
 // —— 渲染域:发光台面层 + 各 frameStyle 的 piece canvas 绘制 ——
-import { rollFilmType, type Piece, type Roll, type Shot } from './types';
+import { rollFilmType, rollFilmIdx, type Piece, type Roll, type Shot } from './types';
 import { bg, bctx, TW, TH, films, deckScale } from './core';
-import { glow, radius, filmIdx, selected, pieces, rollById } from './state';
+import { glow, radius, selected, pieces, rollById } from './state';
 import { pieceFrameStyle } from './frames';
 
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
@@ -58,7 +58,8 @@ export function pieceLayout(piece: Piece): PieceLayout | null {
   const roll = rollById(piece.rollId);
   const shots = piece.shots || (roll && roll.shots);   // 剪下的单张用自带 shots 子集,否则整卷
   if(!shots || !shots.length) return null;
-  const ratio = films[filmIdx].ratio, aspect = films[filmIdx].aspect;
+  const fi = rollFilmIdx(roll);                          // 该卷画幅规格(per-roll)
+  const ratio = films[fi].ratio, aspect = films[fi].aspect;
   const fh = TH * (0.067 + ratio*0.103);   // 帧高随规格变;整体缩小使 135 在 lightbox 高度内可竖排约 7 条(BH≈214,TH/7≈214),台面留白更多
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基

@@ -3,32 +3,16 @@
 //   本文件只做接线,不含任何业务函数体。
 import './styles.css';
 import type { FilmType, Roll } from './types';
-import { $, screen, tray, films, deckScale, ui } from './core';
-import { pieces, rolls, filmIdx, rollById, setImportTarget, setNextId, setGlow, setRadius } from './state';
+import { $, screen, tray, deckScale, ui } from './core';
+import { pieces, rolls, rollById, setImportTarget, setNextId, setGlow, setRadius } from './state';
 import { render } from './render';
 import { applyDeck, updatePlaceholder, deckRect, layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from './frames';
 import { addPiece, startPieceDrag, onPointerMove, endPieceDrag, rerenderPiecesByRoll } from './pieces';
 import { newRoll, deleteRoll, cycleRollType, removeShot, moveShot, addFiles } from './rolls';
 import { expandRoll, hideExpand, cancelHideExpand, scheduleHideExpand, renderTray } from './tray';
-import { save, syncLabels, selectFilm, toggleDrawer, setFmt } from './presets';
+import { save, syncLabels, toggleDrawer, setFmt } from './presets';
 import { loadAllRolls } from './persist';
-
-// —— 胶卷规格:底部 dock chip + 抽屉「胶片」组 seg(共用 selectFilm)——
-const filmsEl = $('#films'), filmSeg = $('#filmSeg');
-films.forEach((f,i)=>{
-  const chip = document.createElement('div');           // 底部 dock chip
-  chip.className = 'film' + (i===filmIdx?' on':'');
-  chip.innerHTML = `${f.name}<small>${f.desc}</small>`;
-  chip.onclick = ()=>selectFilm(i);
-  filmsEl.appendChild(chip);
-
-  const btn = document.createElement('button');         // 抽屉「胶片」组同款
-  if(i===filmIdx) btn.className = 'on';
-  btn.innerHTML = `${f.name}<small>${f.desc}</small>`;
-  btn.onclick = ()=>selectFilm(i);
-  filmSeg.appendChild(btn);
-});
 
 // —— 导入入口 ——
 // 新建卷:点「＋」展开胶片类型三选一,选一类即建空卷(默认反转,不自动上台)
@@ -179,7 +163,7 @@ if(location.search.includes('selftest')){
     const stored = await loadAllRolls();
     if(stored.length){
       stored.forEach(rec=>{
-        const roll: Roll = { id: rec.id, name: rec.name, shots: [], filmType: rec.filmType };
+        const roll: Roll = { id: rec.id, name: rec.name, shots: [], filmType: rec.filmType, filmIdx: rec.filmIdx ?? 1 };
         rec.shots.forEach(blob=>{
           const url = URL.createObjectURL(blob);    // 同源 blob URL,不污染画布
           const im = new Image();
