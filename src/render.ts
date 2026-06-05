@@ -4,6 +4,8 @@ import { bg, bctx, TW, TH, films, deckScale } from './core';
 import { radius, selected, pieces, rollById, leakEnabled } from './state';
 import { pieceFrameStyle } from './frames';
 
+const VIGNETTE_STRENGTH = 0.45;   // 暗角强度(0~1),逐帧四角自然压暗,可调
+
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
 export interface PieceLayout {
   roll: Roll | undefined;
@@ -187,6 +189,15 @@ export function renderPieceFilm(piece: Piece){
       ctx.fillRect(fx, framesY, fw, fh);
       ctx.globalAlpha = 1;
     }
+    // 暗角:clip 内叠径向渐变,中心透明、四角压暗(对三种 filmType 一视同仁)
+    const vig = ctx.createRadialGradient(
+      fx+fw/2, framesY+fh/2, 0,
+      fx+fw/2, framesY+fh/2, Math.max(fw,fh)*0.65
+    );
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,'+VIGNETTE_STRENGTH+')');
+    ctx.fillStyle = vig;
+    ctx.fillRect(fx, framesY, fw, fh);
     ctx.restore();
   });
 
