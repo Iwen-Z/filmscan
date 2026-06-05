@@ -59,7 +59,7 @@ im.onload = ()=>{
   c3.drawImage(bg,0,0,TW,TH);
   pieces.forEach(pc=>c3.drawImage(pc.canvas, pc.x, pc.y));
   const pc2 = c3.getImageData(TW/2|0, TH/2|0, 1, 1).data;
-  // 面板亮度现随背光(glow)变,不再恒为纯白 -> 与台面底色(bg 同点)逐通道比对
+  // 面板固定亮白 -> 与台面底色(bg 同点)逐通道比对
   const bgC = bctx.getImageData(TW/2|0, TH/2|0, 1, 1).data;
   ok('⑥框外 piece 被裁(中心回台面底色)', pc2[0]===bgC[0] && pc2[1]===bgC[1] && pc2[2]===bgC[2]);
   centerPieceAt(p1, TW/2, TH/2);   // 复位

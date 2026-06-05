@@ -1,7 +1,7 @@
 // —— 渲染域:发光台面层 + 各 frameStyle 的 piece canvas 绘制 ——
 import { rollFilmType, rollFilmIdx, type Piece, type Roll, type Shot } from './types';
 import { bg, bctx, TW, TH, films, deckScale } from './core';
-import { glow, radius, selected, pieces, rollById } from './state';
+import { radius, selected, pieces, rollById } from './state';
 import { pieceFrameStyle } from './frames';
 
 // —— 胶卷条几何的解算结果(pieceLayout 返回)——
@@ -29,10 +29,9 @@ export function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number,
 // —— 发光台面层(底色/均匀度/像素网格):只随观片台预设与微调变,换照片不动 ——
 export function renderBg(){
   bg.width = TW; bg.height = TH;            // 设宽即清空
-  // 背光亮度:只调本台面板明度。低 glow -> 暗灰面板,高 glow -> 亮白面板。
-  //   胶片像素不在此处理(见 renderPieceFilm);片基半透明,压台的胶片靠合成自然透出此面板亮度。
-  const lum = Math.round(70 + (glow/100)*185);   // glow0 -> 70 暗灰,glow100 -> 255 亮白
-  bctx.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
+  // 面板固定亮白(不可调)。胶片像素不在此处理(见 renderPieceFilm);
+  //   片基半透明,压台的胶片靠合成自然透出此面板亮度。
+  bctx.fillStyle = '#ffffff';
   bctx.fillRect(0,0,TW,TH);
 }
 

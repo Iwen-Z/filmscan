@@ -29,8 +29,6 @@ export let importTarget: Roll | null = null;
 export function setImportTarget(v: Roll | null) { importTarget = v; }
 
 // —— 胶片/台面可调态(滑杆驱动)——
-export let glow = 40;                 // 背光亮度(只调观片台面板,见 renderBg)
-export function setGlow(v: number) { glow = v; }
 export let radius = 0;                // 底片圆角(胶片属性)
 export function setRadius(v: number) { radius = v; }
 

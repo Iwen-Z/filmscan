@@ -26,7 +26,6 @@ export function save(){
 }
 
 export function syncLabels(){
-  out.glow.textContent   = ui.glow.value;
   out.radius.textContent = ui.radius.value;
 }
 

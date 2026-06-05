@@ -29,8 +29,8 @@ bg.width = TW; bg.height = TH;
 export const screen: HTMLElement = $('#screen');
 export const tray: HTMLElement = $('#tray');
 
-export const ui  = { glow: $<HTMLInputElement>('#glow'),  radius: $<HTMLInputElement>('#radius') };
-export const out = { glow: $('#vGlow'), radius: $('#vRadius') };
+export const ui  = { radius: $<HTMLInputElement>('#radius') };
+export const out = { radius: $('#vRadius') };
 
 // nominal px -> CSS px
 export const deckScale = () => screen.clientWidth / TW;

@@ -5,7 +5,7 @@ import './styles.css';
 import type { FilmType, Roll } from './types';
 import { rollFilmType, rollFilmIdx } from './types';
 import { $, screen, tray, deckScale, ui } from './core';
-import { pieces, rolls, rollById, setImportTarget, setNextId, setGlow, setRadius } from './state';
+import { pieces, rolls, rollById, setImportTarget, setNextId, setRadius } from './state';
 import { render } from './render';
 import { applyDeck, updatePlaceholder, deckRect, layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from './frames';
@@ -184,7 +184,6 @@ window.addEventListener('pointerdown', (e: PointerEvent)=>{
 
 // 滑块
 (Object.keys(ui) as (keyof typeof ui)[]).forEach(k => { ui[k].oninput = () => {
-  setGlow(+ui.glow.value);        // 背光亮度(只调观片台面板,见 renderBg)
   setRadius(+ui.radius.value);    // 底片圆角(胶片属性)
   syncLabels(); render();
 }; });
