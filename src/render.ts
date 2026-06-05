@@ -6,6 +6,9 @@ import { pieceFrameStyle } from './frames';
 
 const VIGNETTE_STRENGTH = 0.45;   // 暗角强度(0~1),逐帧四角自然压暗,可调
 const HALATION_STRENGTH = 0.06;   // halation 红橙晕强度(source-over),仅高光门控帧叠加
+// C-41 橙基:base 片基与 photo 帧蒙版共用同一组 RGB,杜绝两套橙叠出的硬切色差缝
+const NEGATIVE_BASE = [200, 112, 42];
+const NEG_RGB = NEGATIVE_BASE.join(',');   // '200,112,42'
 
 // 确定性 LCG:由整数 seed 派生 [0,1) 伪随机,不用 Math.random,保证同 piece/帧索引可重跑
 function lcg(seed: number) { return ((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff; }
@@ -195,7 +198,7 @@ export function renderPieceFilmBase(piece: Piece, L: PieceLayout){
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
   // 片基色:负片 = C-41 橙实色;反转/黑白 = 深灰近黑实色
-  const baseRGB = filmType==='negative' ? '200,112,42' : '30,26,22';
+  const baseRGB = filmType==='negative' ? NEG_RGB : '30,26,22';
   ctx.fillStyle = 'rgba('+baseRGB+','+BASE_ALPHA+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
   // destination-out:把齿孔位置的片基像素清成全透明(真镂空)
@@ -302,9 +305,9 @@ export function renderPieceFilmPhotos(piece: Piece, L: PieceLayout){
     ctx.drawImage(img, sx,sy,sw,sh, fx, framesY, fw, fh);
     ctx.globalAlpha = 1;
     ctx.filter = 'none';
-    if(filmType==='negative'){     // 叠橙色蒙版(C-41 橙罩),clip 内只染本帧
+    if(filmType==='negative'){     // 叠橙色蒙版(C-41 橙罩,与片基同 RGB),clip 内只染本帧
       ctx.globalAlpha = 0.35;
-      ctx.fillStyle = 'rgba(200,100,30,1)';
+      ctx.fillStyle = 'rgba('+NEG_RGB+',1)';
       ctx.fillRect(fx, framesY, fw, fh);
       ctx.globalAlpha = 1;
     }
@@ -358,6 +361,25 @@ export function renderPieceFilmPhotos(piece: Piece, L: PieceLayout){
     const warm = (piece.id * 7 + i * 11) % 3 === 0;
     ctx.fillStyle = warm ? 'rgba(255,200,100,0.04)' : 'rgba(100,140,255,0.03)';
     ctx.fillRect(fx, framesY, fw, fh);
+    // 负片帧边羽化:四周内缘叠向内渐隐到橙基的渐变条,把帧边软化进 base 橙基,消除硬切色差缝。
+    //   颜色全用 NEG_RGB(与片基/帧蒙版同源),边缘 0.7 不透明→内侧 0 透明;反转/黑白不染、跳过。
+    if(filmType==='negative'){
+      const fb = fw*0.06;                  // 内缘羽化边带宽
+      const cIn = 'rgba('+NEG_RGB+',0)';   // 内侧:全透明
+      const cEd = 'rgba('+NEG_RGB+',0.7)'; // 边缘:橙基色
+      let fg = ctx.createLinearGradient(fx, 0, fx+fb, 0);              // 左缘
+      fg.addColorStop(0, cEd); fg.addColorStop(1, cIn);
+      ctx.fillStyle = fg; ctx.fillRect(fx, framesY, fb, fh);
+      fg = ctx.createLinearGradient(fx+fw, 0, fx+fw-fb, 0);           // 右缘
+      fg.addColorStop(0, cEd); fg.addColorStop(1, cIn);
+      ctx.fillStyle = fg; ctx.fillRect(fx+fw-fb, framesY, fb, fh);
+      fg = ctx.createLinearGradient(0, framesY, 0, framesY+fb);       // 上缘
+      fg.addColorStop(0, cEd); fg.addColorStop(1, cIn);
+      ctx.fillStyle = fg; ctx.fillRect(fx, framesY, fw, fb);
+      fg = ctx.createLinearGradient(0, framesY+fh, 0, framesY+fh-fb); // 下缘
+      fg.addColorStop(0, cEd); fg.addColorStop(1, cIn);
+      ctx.fillStyle = fg; ctx.fillRect(fx, framesY+fh-fb, fw, fb);
+    }
     ctx.restore();
 
     // 灰尘点 + 毛发丝(帧 clip 之后,独立 save/restore,确定性 LCG 派生)
