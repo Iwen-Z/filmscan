@@ -23,7 +23,7 @@ export function save(){
             const cx = pc.x + pc.canvas.width/2, cy = pc.y + pc.canvas.height/2;
             oc.save();
             oc.translate(cx, cy);
-            oc.rotate(angle * Math.PI / 180);
+            oc.rotate(angle);   // piece.rotation 已是弧度
             oc.translate(-cx, -cy);
             oc.drawImage(pc.canvas, pc.x, pc.y);
             oc.drawImage(pc.photoCanvas, pc.x, pc.y);

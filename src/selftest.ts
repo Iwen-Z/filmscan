@@ -88,14 +88,16 @@ im.onload = ()=>{
   ok('非破坏:原长条仍 N=3、原卷帧数不变',
      pieceLayout(strip)!.N===3 && r3.shots.length===3);
 
-  // —— 阶段9:剪下单张的确定性轻微旋转(±3°),长条无旋转 ——
-  const expectAngle = ((single.id * 137 + 19) % 60 - 30) / 10;
-  ok('剪下单张带确定性旋转(匹配公式且 ±3° 内)',
-     single.rotation===expectAngle && Math.abs(expectAngle)<=3);
-  ok('单张 transform 含 rotate(与 rotation 一致)',
-     single.el.style.transform === ('rotate(' + expectAngle + 'deg)'));
-  ok('长条卷无旋转(rotation=0 且 transform 空)',
-     strip.rotation===0 && strip.el.style.transform==='');
+  // —— 整卷确定性轻微旋转(±3°),剪下单张摆正 ——
+  //   复刻 render.ts 的 LCG(未导出),角度 = (lcg(id*911+13)*2-1)*3 度,piece.rotation 存弧度
+  const lcg = (seed: number) => ((seed * 1664525 + 1013904223) & 0x7fffffff) / 0x7fffffff;
+  const expectDeg = Math.round((lcg(strip.id * 911 + 13) * 2 - 1) * 30) / 10;
+  ok('整卷带确定性旋转(匹配公式且 ±3° 内)',
+     Math.abs(expectDeg)<=3 && strip.rotation===expectDeg * Math.PI / 180);
+  ok('整卷 transform 含 rotate(deg 与屏幕一致)',
+     strip.el.style.transform === ('rotate(' + expectDeg + 'deg)'));
+  ok('剪下单张摆正(rotation=0 且 transform 空)',
+     single.rotation===0 && single.el.style.transform==='');
 
   // —— 阶段3:单张边框样式切换 ——
   ok('剪下单张默认 frameStyle=film', pieceFrameStyle(single)==='film');
