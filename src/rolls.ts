@@ -6,11 +6,30 @@ import { rerenderPiecesByRoll, removePiecesByRoll } from './pieces';
 import { renderTray } from './tray';
 import { persistRoll, deleteRollFromDB } from './persist';
 
-export function newRoll(filmType?: FilmType): Roll {
+// 新建空卷。
+//   新签名走对象参 { filmType?, filmIdx?, cap? };
+//   向后兼容旧位置参字符串形式 newRoll('reversal')(selftest 在用)。
+export function newRoll(opts?: { filmType?: FilmType; filmIdx?: number; cap?: number } | FilmType): Roll {
+  const o = typeof opts === 'string' ? { filmType: opts } : (opts || {});
   const id = allocId();
-  const roll: Roll = { id, name:'卷 '+id, shots:[], filmType: filmType || 'reversal', filmIdx: 1 };
+  const roll: Roll = {
+    id, name:'卷 '+id, shots:[],
+    filmType: o.filmType || 'reversal',
+    filmIdx: o.filmIdx != null ? o.filmIdx : 1,
+    cap: o.cap,
+  };
   rolls.push(roll); renderTray();
   return roll;
+}
+// 就地更新卷设置(编辑模式):画幅/类型/张数上限 -> 重渲该卷 piece + tray + 落库
+export function updateRollSettings(roll: Roll, opts: { filmType?: FilmType; filmIdx?: number; cap?: number }): void {
+  if(!roll) return;
+  if(opts.filmType != null) roll.filmType = opts.filmType;
+  if(opts.filmIdx != null)  roll.filmIdx = opts.filmIdx;
+  roll.cap = opts.cap;       // undefined = 不限(显式覆盖)
+  rerenderPiecesByRoll(roll.id);   // 画幅/类型变 -> 该卷所有 piece 重渲
+  renderTray();
+  void persistRoll(roll);          // 设置变更落库(fire-and-forget)
 }
 // 切换某卷胶片类型(循环 反转->黑白->负片),该卷所有 piece 实时重渲
 export function cycleRollType(roll: Roll){

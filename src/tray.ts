@@ -114,6 +114,7 @@ export function renderTray(){
       `</div>`+
       `<div class="roll-btns">`+
         `<button class="roll-add" title="加照片进这卷">＋</button>`+
+        `<button class="roll-settings" title="卷设置">⚙</button>`+
         `<button class="roll-del" title="删除整卷">×</button>`+
       `</div>`;
     drawCoil(sec.querySelector('.coil') as HTMLCanvasElement);
