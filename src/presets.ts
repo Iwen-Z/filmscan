@@ -1,12 +1,9 @@
-// —— 导出/标签同步/规格选择/抽屉/示例卷 ——
+// —— 导出/标签同步/规格选择/抽屉 ——
 import { $, bg, TW, TH, ui, out } from './core';
 import { pieces, setFilmIdx } from './state';
 import { renderPiece } from './render';
 import { layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar } from './frames';
-import { addPiece, rerenderPiecesByRoll } from './pieces';
-import { newRoll } from './rolls';
-import { renderTray } from './tray';
 
 // —— 导出格式(jpg/png),由底部 dock 切换 ——
 let fmt = 'jpg';
@@ -53,22 +50,3 @@ export function selectFilm(i: number){
 // —— 抽屉 ——
 const drawer = $('#drawer'), scrim = $('#scrim');
 export function toggleDrawer(open: boolean){ drawer.classList.toggle('open', open); scrim.classList.toggle('on', open); }
-
-// —— 内置示例卷:读 images/ 下的实拍图,免去每次手动导入 ——
-//    file:// 下无法列目录,文件名只能写死;换示例照片改这份清单(或沿用相同文件名)即可。
-const SAMPLE_IMAGES = [
-  'images/DSC02800.JPG', 'images/DSC02820.JPG', 'images/DSC02881.JPG',
-  'images/DSC02899.JPG', 'images/DSC02910.JPG', 'images/DSC02926.JPG',
-];
-export function seedSampleRoll(){
-  const roll = newRoll(); roll.name = '示例卷'; roll.sample = true;   // 标记示例:持久层跳过它
-  SAMPLE_IMAGES.forEach(src=>{
-    const img = new Image();
-    img.onload  = ()=>{ rerenderPiecesByRoll(roll.id); renderTray(); };
-    img.onerror = ()=>{};   // 某张缺失就跳过,不影响其余
-    img.src = src;
-    roll.shots.push({ url: src, img });
-  });
-  addPiece(roll, TW/2, TH/2);     // 摆一条到台面中央,图片随 onload 补画
-  renderTray();
-}

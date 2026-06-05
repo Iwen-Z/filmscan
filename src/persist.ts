@@ -60,9 +60,9 @@ function toast(msg: string): void {
   } catch (_) { /* DOM 不可用(如非浏览器环境)时静默 */ }
 }
 
-// upsert 整卷;跳过示例卷;无 blob 的帧不入库(恢复后无法重建)
+// upsert 整卷;无 blob 的帧不入库(恢复后无法重建)
 export async function persistRoll(roll: Roll): Promise<void> {
-  if (!roll || roll.sample === true) return;
+  if (!roll) return;
   try {
     writeCount++;
     const shots: Blob[] = [];

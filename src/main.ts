@@ -11,7 +11,7 @@ import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from 
 import { addPiece, startPieceDrag, onPointerMove, endPieceDrag, rerenderPiecesByRoll } from './pieces';
 import { newRoll, deleteRoll, cycleRollType, removeShot, moveShot, addFiles } from './rolls';
 import { expandRoll, hideExpand, cancelHideExpand, scheduleHideExpand, renderTray } from './tray';
-import { save, syncLabels, selectFilm, toggleDrawer, seedSampleRoll, setFmt } from './presets';
+import { save, syncLabels, selectFilm, toggleDrawer, setFmt } from './presets';
 import { loadAllRolls } from './persist';
 
 // —— 胶卷规格:底部 dock chip + 抽屉「胶片」组 seg(共用 selectFilm)——
@@ -174,7 +174,7 @@ updatePlaceholder();
 if(location.search.includes('selftest')){
   import('./selftest');                       // 自检环境:动态 import 触发 PASS/FAIL 浮层(不触库)
 } else {
-  // 正常环境:先从 IndexedDB 恢复用户卷,库空才预置示例卷
+  // 正常环境:从 IndexedDB 恢复用户卷;库空则保持空台面(占位提示引导导入)
   void (async ()=>{
     const stored = await loadAllRolls();
     if(stored.length){
@@ -191,8 +191,6 @@ if(location.search.includes('selftest')){
       });
       setNextId(Math.max(...stored.map(r=>r.id)) + 1);   // 新卷 id 不与恢复卷冲突
       renderTray();                                      // 先显示卷(数量),图随 onload 补
-    } else {
-      seedSampleRoll();   // 库空才 seed 示例
     }
   })();
 }

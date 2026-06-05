@@ -14,7 +14,6 @@ export interface Roll {
   name: string;
   shots: Shot[];
   filmType: FilmType;
-  sample?: boolean;
 }
 
 // —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——
