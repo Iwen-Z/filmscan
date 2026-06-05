@@ -17,6 +17,7 @@ export function save(){
   pieces.slice().sort((a,b)=>a.z-b.z)              // 按 z 从底到顶合成
         .forEach(pc=>{                              // nominal 1:1,台面外自然被裁
           // 单张的随手旋转(render 时设到 piece.rotation)同样应用到导出,绕 piece 中心旋转
+          // 双层叠放:同一旋转/定位下先画 base(片基)再画 photo(照片),两层完全重合
           const angle = pc.rotation || 0;
           if(angle){
             const cx = pc.x + pc.canvas.width/2, cy = pc.y + pc.canvas.height/2;
@@ -25,9 +26,11 @@ export function save(){
             oc.rotate(angle * Math.PI / 180);
             oc.translate(-cx, -cy);
             oc.drawImage(pc.canvas, pc.x, pc.y);
+            oc.drawImage(pc.photoCanvas, pc.x, pc.y);
             oc.restore();
           } else {
             oc.drawImage(pc.canvas, pc.x, pc.y);
+            oc.drawImage(pc.photoCanvas, pc.x, pc.y);
           }
         });
   out.toBlob(blob => {
