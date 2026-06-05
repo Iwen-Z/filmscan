@@ -81,6 +81,15 @@ im.onload = ()=>{
   ok('非破坏:原长条仍 N=3、原卷帧数不变',
      pieceLayout(strip)!.N===3 && r3.shots.length===3);
 
+  // —— 阶段9:剪下单张的确定性轻微旋转(±3°),长条无旋转 ——
+  const expectAngle = ((single.id * 137 + 19) % 60 - 30) / 10;
+  ok('剪下单张带确定性旋转(匹配公式且 ±3° 内)',
+     single.rotation===expectAngle && Math.abs(expectAngle)<=3);
+  ok('单张 transform 含 rotate(与 rotation 一致)',
+     single.el.style.transform === ('rotate(' + expectAngle + 'deg)'));
+  ok('长条卷无旋转(rotation=0 且 transform 空)',
+     strip.rotation===0 && strip.el.style.transform==='');
+
   // —— 阶段3:单张边框样式切换 ——
   ok('剪下单张默认 frameStyle=film', pieceFrameStyle(single)==='film');
   setFrameStyle(single, 'none');

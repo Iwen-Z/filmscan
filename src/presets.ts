@@ -15,7 +15,21 @@ export function save(){
   const oc = out.getContext('2d')!;
   oc.drawImage(bg,0,0,TW,TH);                      // 发光台面背景
   pieces.slice().sort((a,b)=>a.z-b.z)              // 按 z 从底到顶合成
-        .forEach(pc=>oc.drawImage(pc.canvas, pc.x, pc.y));  // nominal 1:1,台面外自然被裁
+        .forEach(pc=>{                              // nominal 1:1,台面外自然被裁
+          // 单张的随手旋转(render 时设到 piece.rotation)同样应用到导出,绕 piece 中心旋转
+          const angle = pc.rotation || 0;
+          if(angle){
+            const cx = pc.x + pc.canvas.width/2, cy = pc.y + pc.canvas.height/2;
+            oc.save();
+            oc.translate(cx, cy);
+            oc.rotate(angle * Math.PI / 180);
+            oc.translate(-cx, -cy);
+            oc.drawImage(pc.canvas, pc.x, pc.y);
+            oc.restore();
+          } else {
+            oc.drawImage(pc.canvas, pc.x, pc.y);
+          }
+        });
   out.toBlob(blob => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob!);
