@@ -15,6 +15,7 @@ export interface Roll {
   shots: Shot[];
   filmType: FilmType;
   filmIdx: number;   // 画幅规格索引(对应 core.ts films);per-roll,旧卷缺字段按 1=135 兼容(见 rollFilmIdx)
+  cap?: number;      // 张数上限(硬上限);undefined=不限
 }
 
 // —— 台面上的 piece:每片是一个 DOM 元素(含自带 canvas),可自由 2D 拖动 ——

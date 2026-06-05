@@ -32,16 +32,54 @@
 
 <aside class="tray" id="tray">
   <div class="newroll" id="newRoll"><b>＋</b>新建卷</div>
-  <div class="newroll-panel" id="newRollPanel" hidden>
-    <button data-t="reversal">反转</button>
-    <button data-t="bw">黑白</button>
-    <button data-t="negative">负片</button>
-  </div>
   <div class="rolls" id="rolls">
     <div class="empty" id="trayEmpty">还没有胶卷<br>点上方新建一卷</div>
   </div>
 </aside>
 <div class="roll-expand" id="rollExpand"></div>
+
+<!-- 卷设置弹窗:新建/编辑共用,选画幅/类型/张数上限(纯原生,零依赖) -->
+<div class="modal-scrim" id="rollModal" hidden>
+  <div class="modal-body">
+    <h2 class="modal-title" id="rollModalTitle">新建卷</h2>
+
+    <div class="modal-field">
+      <div class="modal-label">画幅规格</div>
+      <div class="modal-opts" id="rollModalFmt">
+        <button data-idx="0">110<small>微型</small></button>
+        <button data-idx="1">135<small>35mm</small></button>
+        <button data-idx="2">120<small>6×6</small></button>
+        <button data-idx="3">4×5<small>大画幅</small></button>
+      </div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">胶片类型</div>
+      <div class="modal-opts" id="rollModalType">
+        <button data-v="reversal">反转</button>
+        <button data-v="bw">黑白</button>
+        <button data-v="negative">负片</button>
+      </div>
+    </div>
+
+    <div class="modal-field">
+      <div class="modal-label">张数上限</div>
+      <div class="modal-opts" id="rollModalCap">
+        <button data-cap="12">12</button>
+        <button data-cap="24">24</button>
+        <button data-cap="36">36</button>
+        <input type="number" id="rollCapCustom" min="1" placeholder="自定义">
+        <button data-cap="">不限</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn ghost" id="rollModalCancel">取消</button>
+      <button class="modal-btn ok" id="rollModalOk">确定</button>
+    </div>
+  </div>
+</div>
+
 <input id="file" type="file" accept="image/*" multiple hidden>
 
 <div class="dock">

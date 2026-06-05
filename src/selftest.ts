@@ -2,7 +2,7 @@
 //   右下角浮层显示 PASS/FAIL,机制与原内联版完全一致。
 import { $, bg, bctx, TW, TH, clamp, deckScale, screen } from './core';
 import { pieces, selected } from './state';
-import { newRoll, cycleRollType, deleteRoll } from './rolls';
+import { newRoll, cycleRollType, deleteRoll, updateRollSettings } from './rolls';
 import { addPiece, removePiece, startPieceDrag } from './pieces';
 import { layoutPieceEl, centerPieceAt } from './deck';
 import { pieceLayout, renderPiece } from './render';
@@ -112,6 +112,19 @@ im.onload = ()=>{
   cycleRollType(rNeg);   // negative -> reversal,该卷 piece 实时重渲
   ok('切类型循环并落到 roll(negative->reversal)', rNeg.filmType==='reversal' && pNeg.canvas.width>0);
   removePiece(pNeg); deleteRoll(rNeg); deleteRoll(rLegacy);
+
+  // —— 阶段E:卷设置弹窗契约(对象参 newRoll / cap / updateRollSettings)——
+  ok('newRoll() 默认 cap 不限(undefined)', r.cap===undefined);
+  const rOpts = newRoll({ filmType:'bw', filmIdx:3, cap:24 });
+  ok('newRoll(对象参) 设置 filmType/filmIdx/cap',
+     rOpts.filmType==='bw' && rOpts.filmIdx===3 && rOpts.cap===24);
+  updateRollSettings(rOpts, { filmType:'negative', filmIdx:0, cap:12 });
+  ok('updateRollSettings 就地更新字段',
+     rOpts.filmType==='negative' && rOpts.filmIdx===0 && rOpts.cap===12);
+  updateRollSettings(rOpts, { filmIdx:2 });   // 仅传 filmIdx:cap 显式回不限,filmType 不变
+  ok('updateRollSettings 局部更新 + cap 回不限',
+     rOpts.filmIdx===2 && rOpts.filmType==='negative' && rOpts.cap===undefined);
+  deleteRoll(rOpts);
 
   // 单张能进导出:摆到发光窗中心合成后非纯白底
   centerPieceAt(single, TW/2, TH/2);

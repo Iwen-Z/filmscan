@@ -3,37 +3,82 @@
 //   本文件只做接线,不含任何业务函数体。
 import './styles.css';
 import type { FilmType, Roll } from './types';
+import { rollFilmType, rollFilmIdx } from './types';
 import { $, screen, tray, deckScale, ui } from './core';
 import { pieces, rolls, rollById, setImportTarget, setNextId, setGlow, setRadius } from './state';
 import { render } from './render';
 import { applyDeck, updatePlaceholder, deckRect, layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from './frames';
 import { addPiece, startPieceDrag, onPointerMove, endPieceDrag, rerenderPiecesByRoll } from './pieces';
-import { newRoll, deleteRoll, cycleRollType, removeShot, moveShot, addFiles } from './rolls';
+import { newRoll, deleteRoll, cycleRollType, removeShot, moveShot, addFiles, updateRollSettings } from './rolls';
 import { expandRoll, hideExpand, cancelHideExpand, scheduleHideExpand, renderTray } from './tray';
 import { save, syncLabels, toggleDrawer, setFmt } from './presets';
 import { loadAllRolls } from './persist';
 
-// —— 导入入口 ——
-// 新建卷:点「＋」展开胶片类型三选一,选一类即建空卷(默认反转,不自动上台)
-const newRollPanel = $('#newRollPanel');
-$('#newRoll').onclick = ()=>{ newRollPanel.hidden = !newRollPanel.hidden; };
-newRollPanel.addEventListener('click', (e: MouseEvent)=>{
-  const t = (e.target as HTMLElement).dataset.t; if(!t) return;
-  newRoll(t as FilmType);
-  newRollPanel.hidden = true;
-});
 const file = $<HTMLInputElement>('#file');
-$('#placeholder').onclick = ()=>{ setImportTarget(newRoll()); file.click(); };  // 引导:新建卷并导入(默认反转)
 file.onchange = () => { if(file.files) addFiles(file.files); file.value=''; };
+
+// —— 卷设置弹窗:新建/编辑共用,选画幅/类型/张数上限 ——
+type RollOpts = { filmType: FilmType; filmIdx: number; cap?: number };
+const rollModal = $('#rollModal');
+const mTitle = $('#rollModalTitle');
+const mFmt = $('#rollModalFmt'), mType = $('#rollModalType'), mCap = $('#rollModalCap');
+const mCapCustom = $<HTMLInputElement>('#rollCapCustom');
+let modalOnOk: ((opts: RollOpts)=>void) | null = null;
+
+// 单选:容器内仅 btn 高亮(btn=null 时全清)
+function selectOne(container: HTMLElement, btn: Element | null){
+  container.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b===btn));
+}
+function openRollModal(o: { title: string } & RollOpts & { onOk: (opts: RollOpts)=>void }){
+  mTitle.textContent = o.title;
+  selectOne(mFmt, mFmt.querySelector(`button[data-idx="${o.filmIdx}"]`));
+  selectOne(mType, mType.querySelector(`button[data-v="${o.filmType}"]`));
+  // 张数上限:命中预设按钮则高亮该按钮;自定义值进输入框;不限选「不限」
+  mCapCustom.value = '';
+  const preset = o.cap != null ? mCap.querySelector(`button[data-cap="${o.cap}"]`) : mCap.querySelector('button[data-cap=""]');
+  if(o.cap != null && !preset){ mCapCustom.value = String(o.cap); selectOne(mCap, null); }
+  else { selectOne(mCap, preset); }
+  modalOnOk = o.onOk;
+  rollModal.hidden = false;
+}
+function closeRollModal(){ rollModal.hidden = true; modalOnOk = null; }
+
+mFmt.addEventListener('click', (e: MouseEvent)=>{ const b=(e.target as HTMLElement).closest('button'); if(b) selectOne(mFmt, b); });
+mType.addEventListener('click', (e: MouseEvent)=>{ const b=(e.target as HTMLElement).closest('button'); if(b) selectOne(mType, b); });
+mCap.addEventListener('click', (e: MouseEvent)=>{ const b=(e.target as HTMLElement).closest('button'); if(b){ mCapCustom.value=''; selectOne(mCap, b); } });
+mCapCustom.addEventListener('input', ()=>{ if(mCapCustom.value) selectOne(mCap, null); });
+
+function gatherCap(): number | undefined {
+  if(mCapCustom.value){ const n = Math.floor(+mCapCustom.value); return n>0 ? n : undefined; }
+  const on = mCap.querySelector('button.on') as HTMLElement | null;
+  return on && on.dataset.cap ? +on.dataset.cap : undefined;   // data-cap="" (不限) -> undefined
+}
+function gatherOpts(): RollOpts {
+  const fmtOn = mFmt.querySelector('button.on') as HTMLElement | null;
+  const typeOn = mType.querySelector('button.on') as HTMLElement | null;
+  return {
+    filmIdx: fmtOn && fmtOn.dataset.idx != null ? +fmtOn.dataset.idx : 1,
+    filmType: ((typeOn && typeOn.dataset.v) || 'reversal') as FilmType,
+    cap: gatherCap(),
+  };
+}
+$('#rollModalCancel').onclick = closeRollModal;
+rollModal.addEventListener('click', (e: MouseEvent)=>{ if(e.target===rollModal) closeRollModal(); });  // 点遮罩关闭
+$('#rollModalOk').onclick = ()=>{ const cb = modalOnOk; const o = gatherOpts(); closeRollModal(); if(cb) cb(o); };
+
+// 新建卷:点「＋」打开弹窗(空白预填),确定即建空卷(不自动上台)
+$('#newRoll').onclick = ()=> openRollModal({ title:'新建卷', filmIdx:1, filmType:'reversal', cap:undefined, onOk:o=>{ newRoll(o); } });
+// 引导占位:打开弹窗 -> 确定后新建卷并导入(语义不变)
+$('#placeholder').onclick = ()=> openRollModal({ title:'新建卷', filmIdx:1, filmType:'reversal', cap:undefined, onOk:o=>{ setImportTarget(newRoll(o)); file.click(); } });
 
 // —— 候选区(按卷):卷头 pointerdown 拖出即跟随 / 删除 / 卷内＋导入 ——
 const rollsEl = $('#rolls');
 rollsEl.addEventListener('pointerdown', (e: PointerEvent)=>{
   if(e.button) return;
   const t = e.target as HTMLElement;
-  // 功能按钮(删整卷/导入/删单张/切类型)各自的 click 优先,不起拖
-  if(t.closest('.roll-del') || t.closest('.roll-add')
+  // 功能按钮(删整卷/导入/卷设置/删单张/切类型)各自的 click 优先,不起拖
+  if(t.closest('.roll-del') || t.closest('.roll-add') || t.closest('.roll-settings')
      || t.closest('.roll-type') || t.closest('.del')) return;
   const sec = t.closest('.roll') as HTMLElement | null; if(!sec) return;   // 卡片任意处(含缩略图)都能抓整卷
   const roll = rollById(sec.dataset.r);
@@ -51,6 +96,11 @@ rollsEl.addEventListener('click', (e: MouseEvent)=>{
   const roll = rollById(sec.dataset.r); if(!roll) return;
   if(t.classList.contains('roll-del')){ deleteRoll(roll); return; }
   if(t.classList.contains('roll-add')){ setImportTarget(roll); file.click(); return; }
+  if(t.classList.contains('roll-settings')){
+    openRollModal({ title:'卷设置', filmIdx: rollFilmIdx(roll), filmType: rollFilmType(roll), cap: roll.cap,
+                    onOk:o=>updateRollSettings(roll, o) });
+    return;
+  }
   if(t.classList.contains('roll-type')){ cycleRollType(roll); return; }
   const th = t.closest('.thumb') as HTMLElement | null;
   if(th && t.classList.contains('del')){ removeShot(roll, +th.dataset.i!); return; }
@@ -163,7 +213,7 @@ if(location.search.includes('selftest')){
     const stored = await loadAllRolls();
     if(stored.length){
       stored.forEach(rec=>{
-        const roll: Roll = { id: rec.id, name: rec.name, shots: [], filmType: rec.filmType, filmIdx: rec.filmIdx ?? 1 };
+        const roll: Roll = { id: rec.id, name: rec.name, shots: [], filmType: rec.filmType, filmIdx: rec.filmIdx ?? 1, cap: rec.cap };
         rec.shots.forEach(blob=>{
           const url = URL.createObjectURL(blob);    // 同源 blob URL,不污染画布
           const im = new Image();

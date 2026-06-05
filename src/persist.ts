@@ -9,7 +9,7 @@ const DB_NAME = 'filmscan';
 const STORE = 'rolls';
 
 // 入库记录形态(纯可序列化)
-interface StoredRoll { id: number; name: string; filmType: FilmType; filmIdx?: number; shots: Blob[]; }
+interface StoredRoll { id: number; name: string; filmType: FilmType; filmIdx?: number; cap?: number; shots: Blob[]; }
 
 // selftest 写库守卫:任何真正的写/删都自增,selftest 路径不调本模块 -> 恒为 0
 export let writeCount = 0;
@@ -67,7 +67,7 @@ export async function persistRoll(roll: Roll): Promise<void> {
     writeCount++;
     const shots: Blob[] = [];
     roll.shots.forEach(s => { if (s.blob) shots.push(s.blob); });
-    const rec: StoredRoll = { id: roll.id, name: roll.name, filmType: roll.filmType, filmIdx: roll.filmIdx ?? 1, shots };
+    const rec: StoredRoll = { id: roll.id, name: roll.name, filmType: roll.filmType, filmIdx: roll.filmIdx ?? 1, cap: roll.cap, shots };
     const db = await openDB();
     try { await runWrite(db, store => store.put(rec)); }
     finally { db.close(); }
@@ -87,7 +87,7 @@ export async function deleteRollFromDB(id: number): Promise<void> {
   }
 }
 
-export async function loadAllRolls(): Promise<Array<{ id: number; name: string; filmType: FilmType; filmIdx?: number; shots: Blob[] }>> {
+export async function loadAllRolls(): Promise<Array<{ id: number; name: string; filmType: FilmType; filmIdx?: number; cap?: number; shots: Blob[] }>> {
   try {
     const db = await openDB();
     try {
