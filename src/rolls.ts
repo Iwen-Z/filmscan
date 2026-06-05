@@ -8,7 +8,7 @@ import { persistRoll, deleteRollFromDB } from './persist';
 
 export function newRoll(filmType?: FilmType): Roll {
   const id = allocId();
-  const roll: Roll = { id, name:'卷 '+id, shots:[], filmType: filmType || 'reversal' };
+  const roll: Roll = { id, name:'卷 '+id, shots:[], filmType: filmType || 'reversal', filmIdx: 1 };
   rolls.push(roll); renderTray();
   return roll;
 }

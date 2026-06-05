@@ -1,9 +1,6 @@
-// —— 导出/标签同步/规格选择/抽屉 ——
+// —— 导出/标签同步/抽屉 ——
 import { $, bg, TW, TH, ui, out } from './core';
-import { pieces, setFilmIdx } from './state';
-import { renderPiece } from './render';
-import { layoutPieceEl } from './deck';
-import { positionCutBtn, positionFrameBar } from './frames';
+import { pieces } from './state';
 
 // —— 导出格式(jpg/png),由底部 dock 切换 ——
 let fmt = 'jpg';
@@ -31,20 +28,6 @@ export function save(){
 export function syncLabels(){
   out.glow.textContent   = ui.glow.value;
   out.radius.textContent = ui.radius.value;
-}
-
-// —— 胶卷规格:底部 chip 与抽屉「胶片」组 seg 共用同一套切换逻辑、双向同步高亮 ——
-export function selectFilm(i: number){
-  setFilmIdx(i);
-  document.querySelectorAll('#films .film').forEach((n,idx)=>n.classList.toggle('on', idx===i));
-  document.querySelectorAll('#filmSeg button').forEach((n,idx)=>n.classList.toggle('on', idx===i));
-  pieces.forEach(pc=>{                 // 切规格:canvas 尺寸变 -> 重渲并按新尺寸重排
-    renderPiece(pc);
-    layoutPieceEl(pc);
-    pc.el.classList.remove('placing'); void pc.el.offsetWidth; pc.el.classList.add('placing');
-  });
-  positionCutBtn();                    // 选框跟随新几何
-  positionFrameBar();                  // 边框工具条跟随新几何
 }
 
 // —— 抽屉 ——

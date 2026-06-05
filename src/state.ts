@@ -28,13 +28,11 @@ export function setSelected(v: { piece: Piece; idx: number } | null) { selected 
 export let importTarget: Roll | null = null;
 export function setImportTarget(v: Roll | null) { importTarget = v; }
 
-// —— 胶片/台面可调态(滑杆/规格选择驱动)——
+// —— 胶片/台面可调态(滑杆驱动)——
 export let glow = 40;                 // 背光亮度(只调观片台面板,见 renderBg)
 export function setGlow(v: number) { glow = v; }
 export let radius = 0;                // 底片圆角(胶片属性)
 export function setRadius(v: number) { radius = v; }
-export let filmIdx = 1;               // 画幅规格,默认 135
-export function setFilmIdx(v: number) { filmIdx = v; }
 
 export const rollById = (id: string | number | undefined): Roll | undefined =>
   rolls.find(r => String(r.id) === String(id));
