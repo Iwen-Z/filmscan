@@ -172,7 +172,7 @@
   .tray .empty{ color:var(--sub); font-size:11px; text-align:center; opacity:.55; margin-top:8px; padding:0 8px; }
 
   /* hover 某卷 -> 向左(朝台面)水平铺开该卷帧预览;仅预览,pointerdown 仍抓整卷 */
-  /* 卷轴抽出动画:默认收起(opacity:0 + 上移,与暗盒罐口同侧),.expand-visible 落下展开 */
+  /* 卷轴横向卷出动画:默认收起在暗盒右侧(translateX(100%) 不可见),.expand-visible 横向卷出铺开 */
   #rollExpand{ position:fixed; right:var(--tray); z-index:7; display:flex;
                 align-items:center; gap:6px; height:96px; padding:8px 10px;
                 max-width:calc(100vw - var(--tray) - 24px); overflow:hidden;
@@ -180,25 +180,27 @@
                 border:1px solid rgba(var(--hl-rgb),.3); border-right:none;
                 border-radius:8px 0 0 8px; box-shadow:-12px 0 32px rgba(0,0,0,.55);
                 backdrop-filter:blur(10px); cursor:grab;
-                opacity:0; transform:translateY(-12px); pointer-events:none;
-                transition:opacity 160ms ease, transform 160ms ease; }
-  #rollExpand.expand-visible{ opacity:1; transform:translateY(0); pointer-events:auto; }
+                opacity:0; transform:translateX(100%); pointer-events:none;
+                transition:transform 220ms ease-out, opacity 220ms ease-out; }
+  #rollExpand.expand-visible{ opacity:1; transform:translateX(0); pointer-events:auto; }
   .roll-expand:active{ cursor:grabbing; }
-  /* 子帧:默认随容器上移并淡出,展开时按 nth-child 级联落位(近似 data-idx 顺序) */
+  /* 子帧:默认在右侧暗盒方向(translateX)淡出,展开时按 nth-child 级联从左到右依次抽出 */
   #rollExpand canvas{ display:block; flex:0 0 auto; border-radius:2px; pointer-events:none;
                        box-shadow:0 0 0 1px rgba(0,0,0,.4);
-                       opacity:0; transform:translateY(-8px);
-                       transition:opacity 160ms ease, transform 160ms ease; }
-  #rollExpand.expand-visible canvas{ opacity:1; transform:translateY(0); }
+                       opacity:0; transform:translateX(16px);
+                       transition:opacity 200ms ease-out, transform 200ms ease-out; }
+  #rollExpand.expand-visible canvas{ opacity:1; transform:translateX(0); }
   #rollExpand canvas:nth-child(1){ transition-delay:0ms; }
-  #rollExpand canvas:nth-child(2){ transition-delay:30ms; }
-  #rollExpand canvas:nth-child(3){ transition-delay:60ms; }
-  #rollExpand canvas:nth-child(4){ transition-delay:90ms; }
-  #rollExpand canvas:nth-child(5){ transition-delay:120ms; }
-  #rollExpand canvas:nth-child(6){ transition-delay:150ms; }
-  #rollExpand canvas:nth-child(7){ transition-delay:180ms; }
-  #rollExpand canvas:nth-child(8){ transition-delay:210ms; }
-  #rollExpand canvas:nth-child(n+9){ transition-delay:240ms; }
+  #rollExpand canvas:nth-child(2){ transition-delay:20ms; }
+  #rollExpand canvas:nth-child(3){ transition-delay:40ms; }
+  #rollExpand canvas:nth-child(4){ transition-delay:60ms; }
+  #rollExpand canvas:nth-child(5){ transition-delay:80ms; }
+  #rollExpand canvas:nth-child(6){ transition-delay:100ms; }
+  #rollExpand canvas:nth-child(7){ transition-delay:120ms; }
+  #rollExpand canvas:nth-child(8){ transition-delay:140ms; }
+  #rollExpand canvas:nth-child(n+9){ transition-delay:140ms; }
+  /* 收起时取消级联延迟,帧整体快速收回(对称收起) */
+  #rollExpand:not(.expand-visible) canvas{ transition-delay:0ms; }
   .roll-expand .ex-empty{ color:var(--sub); font-size:12px; padding:0 8px; white-space:nowrap; }
 
   /* 底部:胶卷规格 + 台名 */

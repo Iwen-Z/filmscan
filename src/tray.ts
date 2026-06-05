@@ -118,7 +118,7 @@ export function showExpand(roll: Roll, sec: HTMLElement){
   const r = sec.getBoundingClientRect();
   const eh = wrap.offsetHeight;
   wrap.style.top = Math.max(6, Math.min(r.top, window.innerHeight - eh - 6)) + 'px';
-  // 加 class 驱动 CSS transform+transition 卷轴抽出动画(替代 display 硬切)
+  // 加 class 驱动 CSS transform+transition:translateX(100%)->0 从暗盒侧横向卷出,子帧 nth-child 级联抽出
   wrap.classList.add('expand-visible');
 }
 // transitionend 清 DOM:模块级单例,避免快速 show/hide 时监听器堆积
