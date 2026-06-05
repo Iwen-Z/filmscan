@@ -145,16 +145,13 @@ export function renderPieceFilm(piece: Piece){
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
   const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 逐帧画面处理
 
-  // 1) 片基(恒定半透明暗棕胶卷带)+ 齿孔真镂空
-  //    关键:片基 alpha 固定半透明,不随任何滑杆变。底下是什么就透出什么:
-  //      压在观片台上 -> 透出被背光照亮的面板(亮);摆到台外桌面 -> 透出暗桌面(暗)。
-  //    于是「台外胶片不被背光提亮」靠合成自然成立,无需位置判断。
-  const BASE_ALPHA = 0.55;                    // 恒定半透明常量
-  const EDGE_ALPHA = 0.3;                     // 长边渐隐透光,同样恒定
+  // 1) 片基(实色胶卷带,按 filmType 分色)+ 齿孔真镂空
+  //    片基现为实色(alpha 0.92,留一丝材质感),不随滑杆/位置变;齿孔仍 destination-out 真镂空。
+  const BASE_ALPHA = 0.92;                    // 实色片基(保留一丝材质感)
   ctx.save();
   rr(ctx, bandX, bandTop, bandW, BH, bandR); ctx.clip();
-  // 片基色:反转/黑白 = 现状清透灰暗棕;负片 = 橙色(C-41 片基),都保持半透明让背光透上来
-  const baseRGB = filmType==='negative' ? '180,90,30' : '38,31,23';
+  // 片基色:负片 = C-41 橙实色;反转/黑白 = 深灰近黑实色
+  const baseRGB = filmType==='negative' ? '200,112,42' : '30,26,22';
   ctx.fillStyle = 'rgba('+baseRGB+','+BASE_ALPHA+')';
   ctx.fillRect(bandX, bandTop, bandW, BH);
   // destination-out:把齿孔位置的片基像素清成全透明(真镂空)
@@ -164,16 +161,6 @@ export function renderPieceFilm(piece: Piece){
   for(let x = bandX + step*0.4; x < bandX + bandW - holeW; x += step){
     rr(ctx, x, bandTop + m*0.30, holeW, holeH, holeR); ctx.fill();
     rr(ctx, x, bandTop + BH - m*0.30 - holeH, holeW, holeH, holeR); ctx.fill();
-  }
-  // 片基长边:恒定的淡渐隐(胶片边缘最薄)——固定值,不随背光变
-  {
-    const edge = m*0.5;
-    let gTop = ctx.createLinearGradient(0,bandTop,0,bandTop+edge);
-    gTop.addColorStop(0,'rgba(0,0,0,'+EDGE_ALPHA+')'); gTop.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle = gTop; ctx.fillRect(bandX,bandTop,bandW,edge);
-    let gBot = ctx.createLinearGradient(0,bandTop+BH-edge,0,bandTop+BH);
-    gBot.addColorStop(0,'rgba(0,0,0,0)'); gBot.addColorStop(1,'rgba(0,0,0,'+EDGE_ALPHA+')');
-    ctx.fillStyle = gBot; ctx.fillRect(bandX,bandTop+BH-edge,bandW,edge);
   }
   ctx.restore();
 
