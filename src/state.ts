@@ -32,5 +32,9 @@ export function setImportTarget(v: Roll | null) { importTarget = v; }
 export let radius = 0;                // 底片圆角(胶片属性)
 export function setRadius(v: number) { radius = v; }
 
+// —— 漏光效果全局开关(off 默认,不渲染)——
+export let leakEnabled = false;
+export function setLeakEnabled(v: boolean) { leakEnabled = v; }
+
 export const rollById = (id: string | number | undefined): Roll | undefined =>
   rolls.find(r => String(r.id) === String(id));

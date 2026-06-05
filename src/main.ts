@@ -5,8 +5,8 @@ import './styles.css';
 import type { FilmType, Roll } from './types';
 import { rollFilmType, rollFilmIdx } from './types';
 import { $, screen, tray, deckScale, ui } from './core';
-import { pieces, rolls, rollById, setImportTarget, setNextId, setRadius } from './state';
-import { render } from './render';
+import { pieces, rolls, rollById, setImportTarget, setNextId, setRadius, setLeakEnabled } from './state';
+import { render, renderAllPieces } from './render';
 import { applyDeck, updatePlaceholder, deckRect, layoutPieceEl } from './deck';
 import { positionCutBtn, positionFrameBar, clearSelection, closeFrameBar } from './frames';
 import { addPiece, startPieceDrag, onPointerMove, endPieceDrag, rerenderPiecesByRoll } from './pieces';
@@ -195,6 +195,12 @@ $('#fmt').onclick = (e: MouseEvent) => {
   t.classList.add('on');
 };
 $('#save').onclick = save;
+
+// 漏光全局开关:勾选态落到全局态后重渲所有 piece
+{
+  const leakToggle = document.getElementById('leak-toggle') as HTMLInputElement | null;
+  if(leakToggle) leakToggle.addEventListener('change', ()=>{ setLeakEnabled(leakToggle.checked); renderAllPieces(); });
+}
 
 // 抽屉
 $('#gear').onclick = ()=>toggleDrawer(true);
