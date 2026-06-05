@@ -62,7 +62,7 @@ export function pieceLayout(piece: Piece): PieceLayout | null {
   const fh = TH * (0.067 + ratio*0.103);   // 帧高随规格变;整体缩小使 135 在 lightbox 高度内可竖排约 7 条(BH≈214,TH/7≈214),台面留白更多
   const fw = fh * aspect;                // 横画幅(长边在水平方向)
   const g  = fh * 0.10;                  // 帧间片基
-  const m  = fh * 0.16;                  // 上下片基/齿孔区
+  const m  = fh * 0.10;                  // 上下片基/齿孔区(留白收窄,齿孔仍按 m 比例内嵌)
   const BH = fh + 2*m;                    // 胶卷带高
   const N  = shots.length;
   const CW = N*fw + (N-1)*g;              // 所有帧内容宽
