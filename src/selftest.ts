@@ -9,6 +9,7 @@ import { pieceLayout, renderPiece } from './render';
 import { setSelection, cutSelected, pieceFrameStyle, setFrameStyle } from './frames';
 import { rollFilmType, type Roll } from './types';
 import { persistRoll, loadAllRolls, writeCount } from './persist';
+import { drawCanister } from './tray';
 
 const T: [string, boolean][] = [], ok = (n: string, c: unknown)=>T.push([n,!!c]);
 // 持久层:仅断言函数已导出,selftest 路径不调用任何 DB(见 writeCount 守卫)
@@ -143,6 +144,24 @@ im.onload = ()=>{
   ok('cap 充足 moveShot 正常移入',
      rSrc.shots.length===0 && rCap.shots.length===3);
   deleteRoll(rCap); deleteRoll(rSrc);
+
+  // —— 阶段G:tray 竖立暗盒缩略(drawCanister 纯 Canvas,按比例设尺寸 + 按类型上色)——
+  const dpr = window.devicePixelRatio || 1;
+  const cvR = document.createElement('canvas');
+  drawCanister(cvR, newRoll('reversal'));
+  ok('drawCanister 设竖立罐比例(40×64,style 已设)',
+     cvR.width===Math.round(40*dpr) && cvR.height===Math.round(64*dpr) &&
+     cvR.style.width==='40px' && cvR.style.height==='64px');
+  // 罐身中部采样:不同胶片类型应给出不同颜色(暖银 vs 橙底)
+  const sampleBody = (ft: 'reversal'|'bw'|'negative')=>{
+    const cv = document.createElement('canvas');
+    drawCanister(cv, newRoll(ft));
+    return cv.getContext('2d')!.getImageData(Math.round(20*dpr), Math.round(28*dpr), 1, 1).data;
+  };
+  const pRev = sampleBody('reversal'), pNegC = sampleBody('negative');
+  ok('drawCanister 罐身已上色(非透明)', pRev[3] > 0 && pNegC[3] > 0);
+  ok('drawCanister 按类型区分颜色(reversal≠negative)',
+     pRev[0]!==pNegC[0] || pRev[1]!==pNegC[1] || pRev[2]!==pNegC[2]);
 
   // 单张能进导出:摆到发光窗中心合成后非纯白底
   centerPieceAt(single, TW/2, TH/2);

@@ -1,40 +1,77 @@
-// —— 候选区(按卷分组)域:胶圈缩略 + hover 展开预览 + tray 渲染 ——
-import type { Roll } from './types';
+// —— 候选区(按卷分组)域:暗盒缩略 + hover 展开预览 + tray 渲染 ——
+import type { Roll, FilmType } from './types';
 import { filmTypeLabel, rollFilmType } from './types';
 import { $ } from './core';
 import { rolls, pieces } from './state';
 
-// —— 默认胶圈态:用纯 Canvas 画「卷起的胶圈/胶卷盘」,零图片资源、零依赖 ——
-//   同心环(暖色 #e8dcc0 线条,内圈更亮)+ 暗盘底 + 中心留孔。
-export function drawCoil(canvas: HTMLCanvasElement){
+// 圆角矩形路径(自带 helper,不依赖 ctx.roundRect,headless 兼容)
+function roundRectPath(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number){
+  const rr = Math.min(r, w/2, h/2);
+  c.beginPath();
+  c.moveTo(x+rr, y);
+  c.arcTo(x+w, y,   x+w, y+h, rr);
+  c.arcTo(x+w, y+h, x,   y+h, rr);
+  c.arcTo(x,   y+h, x,   y,   rr);
+  c.arcTo(x,   y,   x+w, y,   rr);
+  c.closePath();
+}
+
+// 按胶片类型给罐身渐变上色:[左高光, 右暗]。默认暖银,bw 冷深灰,negative 橙底。
+const CANISTER_TINT: Record<FilmType, [string, string]> = {
+  reversal: ['#d0c8b8', '#6a6055'],   // 暖银(规格默认)
+  bw:       ['#9a9a9a', '#454545'],   // 冷深灰
+  negative: ['#d2854a', '#8a4a20'],   // 橙底(C-41)
+};
+
+// —— 默认暗盒态:纯 Canvas 画「竖立的 35mm 金属暗盒」,零图片资源、零依赖 ——
+//   罐身竖直渐变模拟圆柱金属 + 顶部轴心凸起 + 底部露片头(leader,带齿孔)。
+export function drawCanister(canvas: HTMLCanvasElement, roll: Roll){
   const dpr = window.devicePixelRatio || 1;
-  const size = 56;
-  canvas.width = size*dpr; canvas.height = size*dpr;
-  canvas.style.width = size+'px'; canvas.style.height = size+'px';
+  const W = 40, H = 64;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
   const c = canvas.getContext('2d')!;
   c.setTransform(dpr,0,0,dpr,0,0);
-  c.clearRect(0,0,size,size);
-  const cx = size/2, cy = size/2, rOuter = size/2-3, rInner = 6.5;
-  // 盘底:暗棕实心盘
-  c.beginPath(); c.arc(cx,cy,rOuter,0,Math.PI*2);
-  c.fillStyle = 'rgba(34,29,22,.9)'; c.fill();
-  c.lineWidth = 1.4; c.strokeStyle = 'rgba(232,220,192,.55)'; c.stroke();
-  // 同心螺旋圈
-  c.lineCap = 'round';
-  const rings = 8;
-  for(let i=1;i<rings;i++){
-    const t = i/rings;                       // 0..1 由内到外
-    const r = rInner + t*(rOuter-rInner);
-    c.globalAlpha = 0.3 + 0.55*(1-t);        // 内圈更亮
-    c.lineWidth = 1.4;
-    c.strokeStyle = '#e8dcc0';
-    c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
+  c.clearRect(0,0,W,H);
+
+  const [hi, lo] = CANISTER_TINT[rollFilmType(roll)] || CANISTER_TINT.reversal;
+  // 罐身几何
+  const bodyW = 28, bodyX = (W-bodyW)/2;          // 居中,左右各留 6
+  const bodyY = 8,  bodyH = 44;                   // y 8..52
+  // 顶部稍宽凸起(轴心/齿轮孔区)
+  const capW = 34, capX = (W-capW)/2, capY = 2, capH = 8;
+  // 底部片头(leader)
+  const leaderW = 20, leaderX = (W-leaderW)/2, leaderY = 50, leaderH = 12;
+
+  // 圆柱金属:左高光 -> 右暗的横向线性渐变
+  const grad = c.createLinearGradient(bodyX, 0, bodyX+bodyW, 0);
+  grad.addColorStop(0,    hi);
+  grad.addColorStop(0.35, hi);
+  grad.addColorStop(1,    lo);
+
+  // 片头(先画,叠在罐身底下)
+  roundRectPath(c, leaderX, leaderY, leaderW, leaderH, 2);
+  c.fillStyle = '#2a1f14'; c.fill();
+  // 齿孔:3 个矩形孔
+  c.fillStyle = '#15130f';
+  const holeW = 3, holeH = 4, holeY = leaderY + leaderH - holeH - 2;
+  for(let i=0;i<3;i++){
+    const hx = leaderX + 3 + i*((leaderW-6-holeW)/2);
+    c.fillRect(hx, holeY, holeW, holeH);
   }
-  c.globalAlpha = 1;
-  // 中心孔
-  c.beginPath(); c.arc(cx,cy,rInner-1.5,0,Math.PI*2);
-  c.fillStyle = '#15130f'; c.fill();
-  c.lineWidth = 1.4; c.strokeStyle = 'rgba(232,220,192,.85)'; c.stroke();
+
+  // 顶部凸起
+  roundRectPath(c, capX, capY, capW, capH, 2.5);
+  c.fillStyle = grad; c.fill();
+  c.lineWidth = 1; c.strokeStyle = 'rgba(0,0,0,.28)'; c.stroke();
+
+  // 罐身
+  roundRectPath(c, bodyX, bodyY, bodyW, bodyH, 4);
+  c.fillStyle = grad; c.fill();
+  c.lineWidth = 1; c.strokeStyle = 'rgba(0,0,0,.3)'; c.stroke();
+  // 左缘高光竖条,强化圆柱感
+  c.fillStyle = 'rgba(255,255,255,.22)';
+  c.fillRect(bodyX+3, bodyY+3, 2.5, bodyH-6);
 }
 
 // —— 展开预览:把单帧 cover 裁切画进一个小 canvas(横画幅,高 80) ——
@@ -114,13 +151,13 @@ export function renderTray(){
         `<div class="roll-name">${roll.name}</div>`+
         `<div class="roll-count${full ? ' full' : ''}">${countTxt}</div>`+
         `<button class="roll-type" title="切换胶片类型(反转/黑白/负片)">${filmTypeLabel(rollFilmType(roll))}</button>`+
-      `</div>`+
-      `<div class="roll-btns">`+
-        `<button class="roll-add" title="加照片进这卷">＋</button>`+
-        `<button class="roll-settings" title="卷设置">⚙</button>`+
-        `<button class="roll-del" title="删除整卷">×</button>`+
+        `<div class="roll-btns">`+
+          `<button class="roll-add" title="加照片进这卷">＋</button>`+
+          `<button class="roll-settings" title="卷设置">⚙</button>`+
+          `<button class="roll-del" title="删除整卷">×</button>`+
+        `</div>`+
       `</div>`;
-    drawCoil(sec.querySelector('.coil') as HTMLCanvasElement);
+    drawCanister(sec.querySelector('.coil') as HTMLCanvasElement, roll);
     sec.addEventListener('mouseenter', ()=>{ cancelHideExpand(); showExpand(roll, sec); });
     sec.addEventListener('mouseleave', scheduleHideExpand);
     wrap.appendChild(sec);
