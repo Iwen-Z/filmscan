@@ -210,6 +210,48 @@ export function renderPieceFilm(piece: Piece){
     ctx.restore();
   }
 
+  // 底部边缘印字:片基底部齿孔带内的 DX 条形码 / 帧号 / 厂牌 / 日期(随 fh 缩放)
+  {
+    // 印字主色:负片橙基用深棕,反转/黑白深基用浅灰
+    const edgeColor = filmType==='negative' ? 'rgba(20,10,0,0.85)' : 'rgba(255,255,255,0.55)';
+    ctx.save();
+    ctx.textBaseline = 'middle';
+
+    // 1) DX 条形码(片头区):约 20 根竖线
+    ctx.fillStyle = edgeColor;
+    for(let x = bandX + pad*0.1; x < bandX + pad*0.85; x += m*0.165){
+      ctx.fillRect(x, bandTop + BH - m*0.75, m*0.07, m*0.50);
+    }
+
+    // 2) 帧号(每帧居中):1, 1A, 2, 2A …
+    ctx.fillStyle = edgeColor;
+    ctx.font = Math.round(m*0.50)+'px monospace';
+    ctx.textAlign = 'center';
+    shots.forEach((_sh,i)=>{
+      const fx = originX + i*(fw+g);
+      const frameNo = Math.floor(i/2)+1;
+      const label = String(frameNo) + (i%2===1 ? 'A' : '');
+      ctx.fillText(label, fx+fw/2, bandTop + BH - m*0.5);
+    });
+
+    // 3) 厂牌名(片头右侧,靠近首帧)
+    ctx.fillStyle = edgeColor;
+    ctx.font = 'italic '+Math.round(m*0.52)+'px serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('FILMSCAN', bandX + pad*0.92, bandTop + BH - m*0.5);
+
+    // 4) 日期(橙色,每帧右下角,固定日期)
+    ctx.fillStyle = 'rgba(255,140,0,0.80)';
+    ctx.font = Math.round(m*0.40)+'px monospace';
+    ctx.textAlign = 'right';
+    shots.forEach((_sh,i)=>{
+      const fx = originX + i*(fw+g);
+      ctx.fillText('26 06 05', fx+fw-2, bandTop + BH - m*0.25);
+    });
+
+    ctx.restore();
+  }
+
   // 3) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
   if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
     const fx = originX + selected.idx*(fw+g);
