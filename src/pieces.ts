@@ -13,11 +13,20 @@ let pieceSeq = 1;
 export function addPiece(roll: Roll, nx: number, ny: number, shotsOverride?: Shot[] | null, frameStyle?: string): Piece | null {
   if(!roll || !roll.shots.length) return null;
   const el = document.createElement('div'); el.className = 'piece';
+  // 双层叠放:base canvas(片基,z0)在常规流;photo canvas(照片,z1)绝对定位完全重合叠在其上。
   const canvas = document.createElement('canvas');
+  canvas.style.zIndex = '0';
   el.appendChild(canvas);
+  const photoCanvas = document.createElement('canvas');
+  photoCanvas.style.position = 'absolute';
+  photoCanvas.style.top = '0';
+  photoCanvas.style.left = '0';
+  photoCanvas.style.zIndex = '1';
+  el.appendChild(photoCanvas);
   el.insertAdjacentHTML('beforeend', '<button class="piece-del" title="移除">×</button>');
   const piece: Piece = { id:pieceSeq++, rollId:roll.id, x:nx, y:ny, z:bumpZTop(),
                   el, canvas, ctx:canvas.getContext('2d')!,
+                  photoCanvas, photoCtx:photoCanvas.getContext('2d')!,
                   shots: shotsOverride || null,
                   frameStyle: frameStyle || 'film' };   // 随 piece 保存,默认胶片
   el.style.zIndex = String(piece.z);

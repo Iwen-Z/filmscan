@@ -28,8 +28,12 @@ export interface Piece {
   y: number;
   z: number;
   el: HTMLElement;
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
+  // 双层叠放 canvas(同尺寸、完全重合):base 在下(片基/齿孔/印字/漏光),photo 在上(逐帧照片/暗角/halation/灰尘/负片处理)。
+  //   字段名沿用 canvas/ctx(= base 层,避免大范围重命名),photoCanvas/photoCtx 为新增的照片层。
+  canvas: HTMLCanvasElement;        // base 层(片基):z-index 0
+  ctx: CanvasRenderingContext2D;    // = canvas 的 2d 上下文
+  photoCanvas: HTMLCanvasElement;   // photo 层(照片):absolute 叠在 base 之上,z-index 1
+  photoCtx: CanvasRenderingContext2D;
   shots: Shot[] | null;
   frameStyle?: string;
   rotation?: number;   // 剪下单张的确定性轻微旋转(度);导出读取以匹配台面观感,长条恒为 0

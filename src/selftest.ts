@@ -22,6 +22,13 @@ im.onload = ()=>{
   const p1 = addPiece(r, 600, 700)!;
   ok('①拿卷立刻有 piece(addPiece 返回非空且长度+1)', !!p1 && pieces.length===1);
   ok('piece 有 canvas 且已渲染', p1 && p1.canvas.width>0 && p1.canvas.height>0);
+  // 双层叠放:base(canvas)+ photo(photoCanvas)同尺寸,完全重合
+  ok('piece 双层 canvas(base+photo)同尺寸',
+     !!p1.photoCanvas && !!p1.photoCtx &&
+     p1.photoCanvas.width===p1.canvas.width && p1.photoCanvas.height===p1.canvas.height);
+  // photo 层确实画进了照片:画布中心(= 单帧中心)非透明
+  ok('photo 层已落照片(中心非透明)',
+     p1.photoCtx.getImageData(p1.photoCanvas.width/2|0, p1.photoCanvas.height/2|0, 1, 1).data[3] > 0);
   ok('占位已隐藏', $('#placeholder').style.display==='none');
   // 新坐标公式:left/top = 观片台屏幕矩形 + x*s
   const s = deckScale(), rc = screen.getBoundingClientRect();
@@ -47,7 +54,7 @@ im.onload = ()=>{
   const oc = document.createElement('canvas'); oc.width=TW; oc.height=TH;
   const c2 = oc.getContext('2d')!;
   c2.drawImage(bg,0,0,TW,TH);
-  pieces.forEach(pc=>c2.drawImage(pc.canvas, pc.x, pc.y));
+  pieces.forEach(pc=>{ c2.drawImage(pc.canvas, pc.x, pc.y); c2.drawImage(pc.photoCanvas, pc.x, pc.y); });  // 与 save() 一致:两层都画
   // 采样发光窗中心(帧区,1x1 黑图),应非纯白台面底色 -> 证明 piece 真画进导出
   const cx = Math.round(p1.x + p1.canvas.width/2), cy = Math.round(p1.y + p1.canvas.height/2);
   const px = c2.getImageData(clamp(cx,0,TW-1), clamp(cy,0,TH-1), 1, 1).data;
@@ -57,7 +64,7 @@ im.onload = ()=>{
   const oc2 = document.createElement('canvas'); oc2.width=TW; oc2.height=TH;
   const c3 = oc2.getContext('2d')!;
   c3.drawImage(bg,0,0,TW,TH);
-  pieces.forEach(pc=>c3.drawImage(pc.canvas, pc.x, pc.y));
+  pieces.forEach(pc=>{ c3.drawImage(pc.canvas, pc.x, pc.y); c3.drawImage(pc.photoCanvas, pc.x, pc.y); });
   const pc2 = c3.getImageData(TW/2|0, TH/2|0, 1, 1).data;
   // 面板固定亮白 -> 与台面底色(bg 同点)逐通道比对
   const bgC = bctx.getImageData(TW/2|0, TH/2|0, 1, 1).data;
@@ -177,6 +184,7 @@ im.onload = ()=>{
   const ocS = document.createElement('canvas'); ocS.width=TW; ocS.height=TH;
   const cS = ocS.getContext('2d')!; cS.drawImage(bg,0,0,TW,TH);
   cS.drawImage(single.canvas, single.x, single.y);
+  cS.drawImage(single.photoCanvas, single.x, single.y);   // 单张同样两层合成
   const sx = Math.round(single.x+single.canvas.width/2), sy = Math.round(single.y+single.canvas.height/2);
   const sp = cS.getImageData(clamp(sx,0,TW-1), clamp(sy,0,TH-1), 1, 1).data;
   ok('④单张出现在导出(非纯白底)', !(sp[0]===255 && sp[1]===255 && sp[2]===255));

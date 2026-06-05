@@ -100,6 +100,7 @@ export function renderPieceBare(piece: Piece){
   const PAD = Math.ceil(fh*0.12);                 // 给透光柔边留一点余白,免被 canvas 边裁切
   const cw = fw + 2*PAD, ch = fh + 2*PAD;
   piece.canvas.width = cw; piece.canvas.height = ch;
+  piece.photoCanvas.width = cw; piece.photoCanvas.height = ch;   // 单层样式:photo 层保持透明(设宽即清空)
   const s = deckScale();
   piece.el.style.width  = (cw*s)+'px';
   piece.el.style.height = (ch*s)+'px';
@@ -118,6 +119,7 @@ export function renderPiecePolaroid(piece: Piece){
   const cardW = fw + 2*side, cardH = fh + side + bottom;
   const cw = cardW + 2*PAD, ch = cardH + 2*PAD;
   piece.canvas.width = cw; piece.canvas.height = ch;
+  piece.photoCanvas.width = cw; piece.photoCanvas.height = ch;   // 单层样式:photo 层保持透明(设宽即清空)
   const s = deckScale();
   piece.el.style.width  = (cw*s)+'px';
   piece.el.style.height = (ch*s)+'px';
@@ -135,20 +137,44 @@ export function renderPiecePolaroid(piece: Piece){
   drawPhotoCover(ctx, shots[0] && shots[0].img, PAD+side, PAD+side, fw, fh, 0, aspect, false);
 }
 
-// —— 渲染胶片带 piece 的 canvas:片基 + 齿孔 + 逐帧裁切 + 透光 ——
+// —— 渲染胶片带 piece:双层叠放 ——
+//   base 层(piece.canvas):落影 + 实色片基 + 齿孔镂空 + 边缘印字 + 漏光。
+//   photo 层(piece.photoCanvas):逐帧 cover 照片 + 暗角 + halation + 密度微差 + 灰尘毛发 + 负片处理 + 选帧虚线框。
+//   两层共用 pieceLayout(piece) 的同一份几何,完全重合;renderPieceFilm 依次调用两者。
 export function renderPieceFilm(piece: Piece){
   const L = pieceLayout(piece);
   if(!L){ return; }
-  const ctx = piece.ctx;
-  piece.canvas.width = L.cw; piece.canvas.height = L.ch;   // 设宽即清空(透明底)
+  // 两层同尺寸、同 deckScale(设宽即清空,透明底)
+  piece.canvas.width = L.cw; piece.canvas.height = L.ch;
+  piece.photoCanvas.width = L.cw; piece.photoCanvas.height = L.ch;
   const s = deckScale();
   piece.el.style.width  = (L.cw*s)+'px';
   piece.el.style.height = (L.ch*s)+'px';
 
-  const { shots, fh, fw, g, m, BH, CW, pad, originX, bandTop, framesY } = L;
-  const rad = Math.round(Math.min(fw,fh) * radius/100/2);
+  renderPieceFilmBase(piece, L);
+  renderPieceFilmPhotos(piece, L);
+
+  // 剪下的单张(shots!==null,N=1)叠一点确定性旋转,增加随手摆放感。
+  //   piece 定位走 layoutPieceEl 的 left/top(非 transform),故 transform 只承载 rotate,无需拼接 translate。
+  //   角度确定性派生自 piece.id(不用 Math.random,可重跑),范围 ±3°。
+  if (piece.shots !== null) {
+    const angle = ((piece.id * 137 + 19) % 60 - 30) / 10;
+    piece.el.style.transform = 'rotate(' + angle + 'deg)';
+    piece.rotation = angle;
+  } else {
+    piece.el.style.transform = '';
+    piece.rotation = 0;
+  }
+}
+
+// —— base 层:落影 + 实色片基 + 齿孔真镂空 + 边缘印字 + 漏光(画到 piece.canvas)——
+export function renderPieceFilmBase(piece: Piece, L: PieceLayout){
+  const ctx = piece.ctx;
+  ctx.clearRect(0, 0, L.cw, L.ch);   // 显式清空(与 photo 层各自独立)
+
+  const { shots, fh, fw, g, m, BH, CW, pad, originX, bandTop } = L;
   const bandX = originX - g, bandW = CW + 2*g, bandR = 0;   // 35mm 胶卷是直边长条,不要圆角
-  const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 逐帧画面处理
+  const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定片基色 + 印字色
 
   // 落影(在片基之前绘制,在片基下方):柔和投影体现实物摆放体积感
   //   PAD = ceil(fh*0.22) 留白远大于 shadowBlur(≈BH*0.08),阴影不被 canvas 边裁切
@@ -181,7 +207,79 @@ export function renderPieceFilm(piece: Piece){
   }
   ctx.restore();
 
-  // 2) 逐帧:cover 裁成画幅。照片是不透明乳剂,WYSIWYG,背光不改其像素明暗。
+  // 漏光:全局开关开时,在片头/片尾叠红橙渐变条(确定性派生自 piece.id,不用 Math.random)
+  if (leakEnabled) {
+    ctx.save();
+    // 片头漏光:左侧红橙渐变条
+    const leakW = pad * (0.6 + (piece.id % 7) * 0.04);  // 确定性宽度,±20% 浮动
+    const leakAlpha = 0.25 + (piece.id % 5) * 0.04;
+    const gl = ctx.createLinearGradient(bandX, 0, bandX + leakW, 0);
+    gl.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
+    gl.addColorStop(1, 'rgba(220,30,60,0)');
+    ctx.fillStyle = gl;
+    ctx.fillRect(bandX, bandTop, leakW, BH);
+    // 片尾漏光:右侧对称
+    const gr = ctx.createLinearGradient(bandX+bandW, 0, bandX+bandW-leakW, 0);
+    gr.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
+    gr.addColorStop(1, 'rgba(220,30,60,0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(bandX + bandW - leakW, bandTop, leakW, BH);
+    ctx.restore();
+  }
+
+  // 底部边缘印字:片基底部齿孔带内的 DX 条形码 / 帧号 / 厂牌 / 日期(随 fh 缩放)
+  {
+    // 印字主色:负片橙基用深棕,反转/黑白深基用浅灰
+    const edgeColor = filmType==='negative' ? 'rgba(20,10,0,0.85)' : 'rgba(255,255,255,0.55)';
+    ctx.save();
+    ctx.textBaseline = 'middle';
+
+    // 1) DX 条形码(片头区):约 20 根竖线
+    ctx.fillStyle = edgeColor;
+    for(let x = bandX + pad*0.1; x < bandX + pad*0.85; x += m*0.165){
+      ctx.fillRect(x, bandTop + BH - m*0.75, m*0.07, m*0.50);
+    }
+
+    // 2) 帧号(每帧居中):1, 1A, 2, 2A …
+    ctx.fillStyle = edgeColor;
+    ctx.font = Math.round(m*0.50)+'px monospace';
+    ctx.textAlign = 'center';
+    shots.forEach((_sh,i)=>{
+      const fx = originX + i*(fw+g);
+      const frameNo = Math.floor(i/2)+1;
+      const label = String(frameNo) + (i%2===1 ? 'A' : '');
+      ctx.fillText(label, fx+fw/2, bandTop + BH - m*0.5);
+    });
+
+    // 3) 厂牌名(片头右侧,靠近首帧)
+    ctx.fillStyle = edgeColor;
+    ctx.font = 'italic '+Math.round(m*0.52)+'px serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('FILMSCAN', bandX + pad*0.92, bandTop + BH - m*0.5);
+
+    // 4) 日期(橙色,每帧右下角,固定日期)
+    ctx.fillStyle = 'rgba(255,140,0,0.80)';
+    ctx.font = Math.round(m*0.40)+'px monospace';
+    ctx.textAlign = 'right';
+    shots.forEach((_sh,i)=>{
+      const fx = originX + i*(fw+g);
+      ctx.fillText('26 06 05', fx+fw-2, bandTop + BH - m*0.25);
+    });
+
+    ctx.restore();
+  }
+}
+
+// —— photo 层:逐帧 cover 照片 + 暗角 + halation + 密度微差 + 灰尘毛发 + 负片处理 + 选帧虚线框(画到 piece.photoCanvas)——
+export function renderPieceFilmPhotos(piece: Piece, L: PieceLayout){
+  const ctx = piece.photoCtx;
+  ctx.clearRect(0, 0, L.cw, L.ch);   // 透明底,只承载照片与画面效果
+
+  const { shots, fh, fw, g, originX, framesY } = L;
+  const rad = Math.round(Math.min(fw,fh) * radius/100/2);
+  const filmType = rollFilmType(L.roll);   // 该卷胶片类型,决定逐帧画面处理
+
+  // 逐帧:cover 裁成画幅。照片是不透明乳剂,WYSIWYG,背光不改其像素明暗。
   const far = L.aspect;
   shots.forEach((sh0,i)=>{
     const img = sh0.img;
@@ -274,69 +372,7 @@ export function renderPieceFilm(piece: Piece){
     ctx.restore();
   });
 
-  // 漏光:全局开关开时,在片头/片尾叠红橙渐变条(确定性派生自 piece.id,不用 Math.random)
-  if (leakEnabled) {
-    ctx.save();
-    // 片头漏光:左侧红橙渐变条
-    const leakW = pad * (0.6 + (piece.id % 7) * 0.04);  // 确定性宽度,±20% 浮动
-    const leakAlpha = 0.25 + (piece.id % 5) * 0.04;
-    const gl = ctx.createLinearGradient(bandX, 0, bandX + leakW, 0);
-    gl.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
-    gl.addColorStop(1, 'rgba(220,30,60,0)');
-    ctx.fillStyle = gl;
-    ctx.fillRect(bandX, bandTop, leakW, BH);
-    // 片尾漏光:右侧对称
-    const gr = ctx.createLinearGradient(bandX+bandW, 0, bandX+bandW-leakW, 0);
-    gr.addColorStop(0, 'rgba(220,30,60,' + leakAlpha + ')');
-    gr.addColorStop(1, 'rgba(220,30,60,0)');
-    ctx.fillStyle = gr;
-    ctx.fillRect(bandX + bandW - leakW, bandTop, leakW, BH);
-    ctx.restore();
-  }
-
-  // 底部边缘印字:片基底部齿孔带内的 DX 条形码 / 帧号 / 厂牌 / 日期(随 fh 缩放)
-  {
-    // 印字主色:负片橙基用深棕,反转/黑白深基用浅灰
-    const edgeColor = filmType==='negative' ? 'rgba(20,10,0,0.85)' : 'rgba(255,255,255,0.55)';
-    ctx.save();
-    ctx.textBaseline = 'middle';
-
-    // 1) DX 条形码(片头区):约 20 根竖线
-    ctx.fillStyle = edgeColor;
-    for(let x = bandX + pad*0.1; x < bandX + pad*0.85; x += m*0.165){
-      ctx.fillRect(x, bandTop + BH - m*0.75, m*0.07, m*0.50);
-    }
-
-    // 2) 帧号(每帧居中):1, 1A, 2, 2A …
-    ctx.fillStyle = edgeColor;
-    ctx.font = Math.round(m*0.50)+'px monospace';
-    ctx.textAlign = 'center';
-    shots.forEach((_sh,i)=>{
-      const fx = originX + i*(fw+g);
-      const frameNo = Math.floor(i/2)+1;
-      const label = String(frameNo) + (i%2===1 ? 'A' : '');
-      ctx.fillText(label, fx+fw/2, bandTop + BH - m*0.5);
-    });
-
-    // 3) 厂牌名(片头右侧,靠近首帧)
-    ctx.fillStyle = edgeColor;
-    ctx.font = 'italic '+Math.round(m*0.52)+'px serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('FILMSCAN', bandX + pad*0.92, bandTop + BH - m*0.5);
-
-    // 4) 日期(橙色,每帧右下角,固定日期)
-    ctx.fillStyle = 'rgba(255,140,0,0.80)';
-    ctx.font = Math.round(m*0.40)+'px monospace';
-    ctx.textAlign = 'right';
-    shots.forEach((_sh,i)=>{
-      const fx = originX + i*(fw+g);
-      ctx.fillText('26 06 05', fx+fw-2, bandTop + BH - m*0.25);
-    });
-
-    ctx.restore();
-  }
-
-  // 3) 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
+  // 阶段2:被选中那帧画虚线选框(仅长条 N>1 才可选帧)
   if(selected && selected.piece===piece && shots.length>1 && selected.idx<shots.length){
     const fx = originX + selected.idx*(fw+g);
     ctx.save();
@@ -346,18 +382,6 @@ export function renderPieceFilm(piece: Piece){
     rr(ctx, fx, framesY, fw, fh, rad);
     ctx.stroke();
     ctx.restore();
-  }
-
-  // 剪下的单张(shots!==null,N=1)叠一点确定性旋转,增加随手摆放感。
-  //   piece 定位走 layoutPieceEl 的 left/top(非 transform),故 transform 只承载 rotate,无需拼接 translate。
-  //   角度确定性派生自 piece.id(不用 Math.random,可重跑),范围 ±3°。
-  if (piece.shots !== null) {
-    const angle = ((piece.id * 137 + 19) % 60 - 30) / 10;
-    piece.el.style.transform = 'rotate(' + angle + 'deg)';
-    piece.rotation = angle;
-  } else {
-    piece.el.style.transform = '';
-    piece.rotation = 0;
   }
 }
 
