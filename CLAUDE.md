@@ -1,4 +1,4 @@
-## 交互模型（设计约束 · 手写勿被 cc-auto 覆盖）
+## 交互模型（设计约束 · 手写勿被 ginger 覆盖）
 
 核心是「真实灯箱 + 拼图手感」，**别做成网页控件**（第一版偏了被否：活动范围限在框内 / 加了移动把手 / 长条还能片内滚动，全否）。
 
@@ -10,7 +10,7 @@
 
 需求是迭代聊出来的，先确认模型再让工作流跑。卷相关 UX 细节见 `docs/ROLL_UX_SPEC.md`。
 
-<!-- cc-auto:ops 开始 · 本段由 cc 工具链自动维护，勿手改 -->
+<!-- ginger:ops 开始 · 本段由 ginger 流水线自动维护，勿手改 -->
 ## 🤖 运维事实（自动记录）
 
 - 本应用现为 **Vite + 原生 TypeScript** 工程（产物是静态 HTML/JS/CSS，**运行时零 UI 框架**，仅 Canvas + 原生 DOM）。常用命令：
@@ -22,7 +22,7 @@
 - 入口 `index.html`（引 `/src/main.ts`），源码 `src/*.ts` 按域拆模块；类型检查 `npx tsc --noEmit`。
 - **页内自检 harness**：任一模式下 URL 加 `?selftest` 会动态 import `src/selftest.ts` 跑断言，右下角浮层显示 `SELFTEST PASS`（绿）/`SELFTEST FAIL`（红）。无头验证用上面的 `npm run selftest:headless`。
 - 纯前端、不上传服务器，照片只在浏览器本地处理；**不引入运行时 UI 框架**是约束，加功能保持原生 TS + Canvas。
-<!-- cc-auto:ops 结束 -->
+<!-- ginger:ops 结束 -->
 
 ## 架构地图（手写 · 给规划者少绕路用 · 改了模块边界就同步）
 
@@ -52,7 +52,7 @@
 - 拖拽/选帧/剪下：`pieces.ts`（拖）/ `frames.ts`（选剪）。
 - 导出：`presets.ts` `save`（注意 tainted canvas 坑，见下节）。
 
-## 本地运行 / 导出的坑（手写，勿被 cc-auto 覆盖）
+## 本地运行 / 导出的坑（手写，勿被 ginger 覆盖）
 
 - **导出图片要用本地服务器跑（`npm run dev` 或 `npm run preview`），别用 `file://` 双击打开**：内置示例卷的图来自 `public/images/`（Vite 同源 serve 到根 `/images`）。`file://` 把每个本地文件当独立安全源 → 画布被「污染」(tainted canvas) → `toBlob` 抛 `SecurityError`、下载失败。页面一打开就 seed 了示例卷，所以 `file://` 下导出默认必废。**Vite dev/preview 已是同源 HTTP**，不污染、导出正常——不再需要手动起 `python3 -m http.server`。
 - 起服务器：`npm install` 后 `npm run dev` → 开 `http://localhost:5173`（或 `npm run preview` 跑 build 产物）。
